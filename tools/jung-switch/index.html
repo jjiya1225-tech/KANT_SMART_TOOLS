@@ -293,17 +293,16 @@
   .pdoc .totrow td{font-weight:800;font-size:13px;background:#fafaf8}
   .pdoc .note{font-size:11px;color:var(--sub);margin-top:14px;line-height:1.6}
   /* 내부용 단가 전환 토글 (업체가 데이터가 있을 때만 노출) */
-  #priceModeBar{display:none;position:fixed;top:8px;right:10px;z-index:99998;align-items:center;gap:4px;
-    background:#fff;border:1.5px solid #e0e0e0;border-radius:11px;padding:4px;box-shadow:0 2px 10px rgba(0,0,0,.14)}
-  .pmbtn{border:none;background:#f2f2ef;color:#555;font-weight:700;font-size:12px;padding:7px 12px;border-radius:8px;cursor:pointer;font-family:inherit}
+  #priceModeBar{display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:99998;align-items:center;gap:5px;
+    background:#fff;border:1.5px solid #d6d6d6;border-radius:13px;padding:5px;box-shadow:0 4px 16px rgba(0,0,0,.18)}
+  .pmbtn{border:none;background:#f1f1ee;color:#555;font-weight:800;font-size:13.5px;padding:9px 20px;border-radius:9px;cursor:pointer;font-family:inherit}
   .pmbtn.on{background:#111;color:#fff}
 </style>
 </head>
 <body>
 <div id="priceModeBar">
-  <span style="font-size:10.5px;color:#b5532b;font-weight:800;padding:0 5px">내부용</span>
-  <button id="pmOnline" class="pmbtn on" onclick="setPriceMode('online')">온라인가</button>
-  <button id="pmVendor" class="pmbtn" onclick="setPriceMode('vendor')">업체가</button>
+  <button id="pmVendor" class="pmbtn on" onclick="setPriceMode('vendor')">업체가</button>
+  <button id="pmOnline" class="pmbtn" onclick="setPriceMode('online')">온라인가</button>
 </div>
 <div id="app">
 <header class="top">
@@ -946,8 +945,8 @@ function goStep(n){var e=document.getElementById('step'+n);if(e)e.scrollIntoView
 })();
 
 renderAll();renderCart();
-/* 업체가 데이터가 주입돼 있으면(내부용) 단가 전환 토글 노출 */
-if(window.VPRICES){var _pb=document.getElementById('priceModeBar'); if(_pb)_pb.style.display='flex';}
+/* 업체가 데이터가 주입돼 있으면(내부용) 단가 전환 토글 노출 + 기본값 업체가 */
+if(window.VPRICES){var _pb=document.getElementById('priceModeBar'); if(_pb)_pb.style.display='flex'; setPriceMode('vendor');}
 
 /* 팝업(모바일바·기능선택·문서)을 페이지 최상위로 이동 — 아임웹 등 transform 컨테이너 안에서도 정상 표시 */
 (function(){var p=document.createElement('div');p.id='jungpop';
