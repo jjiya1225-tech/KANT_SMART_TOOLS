@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인보이스 변환기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 32px 0; text-align: center; }
+.header h1 { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
+.header p { font-size: 14px; opacity: 0.7; }
+.container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+.card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.card h2 .step { background: #1a1a2e; color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.upload-area { border: 2px dashed #d0d5dd; border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.upload-area:hover, .upload-area.drag-over { border-color: #1a1a2e; background: #f8f9ff; }
+.upload-area.has-file { border-color: #22c55e; background: #f0fdf4; }
+.upload-area svg { width: 40px; height: 40px; margin-bottom: 12px; color: #98a2b3; }
+.upload-area.has-file svg { color: #22c55e; }
+.upload-area p { font-size: 14px; color: #667085; }
+.upload-area .filename { font-weight: 600; color: #1a1a2e; margin-top: 4px; }
+input[type="file"] { display: none; }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.field label { display: block; font-size: 12px; font-weight: 600; color: #667085; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.field input, .field select { width: 100%; padding: 10px 12px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 14px; transition: border 0.2s; }
+.field input:focus, .field select:focus { outline: none; border-color: #1a1a2e; box-shadow: 0 0 0 3px rgba(26,26,46,0.1); }
+.mapping-grid { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 8px; align-items: center; margin-top: 16px; }
+.mapping-arrow { text-align: center; color: #98a2b3; font-size: 18px; }
+.mapping-label { font-size: 13px; font-weight: 500; padding: 8px 10px; background: #f8f9fa; border-radius: 8px; color: #344054; }
+.mapping-grid select { padding: 8px 10px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 13px; }
+.btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+.btn-primary { background: #1a1a2e; color: white; }
+.btn-primary:hover { background: #16213e; transform: translateY(-1px); }
+.btn-primary:disabled { background: #98a2b3; cursor: not-allowed; transform: none; }
+.btn-success { background: #22c55e; color: white; }
+.btn-success:hover { background: #16a34a; }
+.btn-outline { background: white; color: #1a1a2e; border: 1px solid #d0d5dd; }
+.btn-outline:hover { background: #f8f9fa; }
+.btn-group { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.table-wrapper { overflow-x: auto; margin-top: 12px; border-radius: 8px; border: 1px solid #e5e7eb; max-height: 600px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; color: #344054; white-space: nowrap; border-bottom: 2px solid #e5e7eb; position: sticky; top: 0; z-index: 1; }
+td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; white-space: nowrap; vertical-align: middle; }
+tr:hover td { background: #f8f9ff; }
+td img { width: 60px; height: 60px; object-fit: contain; border-radius: 4px; background: #f9f9f9; }
+.no-img { width: 60px; height: 60px; display: inline-flex; align-items: center; justify-content: center; background: #f3f4f6; border-radius: 4px; color: #ccc; font-size: 11px; }
+.stats { display: flex; gap: 24px; padding: 16px 0; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat .value { font-size: 24px; font-weight: 700; color: #1a1a2e; }
+.stat .label { font-size: 12px; color: #667085; margin-top: 2px; }
+.status-bar { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; display: none; }
+.status-bar.error { display: block; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.status-bar.success { display: block; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.status-bar.info { display: block; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.hidden { display: none !important; }
+.tool-back { position: fixed; top: 16px; left: 16px; color: rgba(255,255,255,0.85); text-decoration: none; font-size: 14px; font-weight: 600; z-index: 10; }
+.tool-back:hover { color: #fff; }
+@media (max-width: 768px) {
+  .settings-grid { grid-template-columns: 1fr 1fr; }
+  .mapping-grid { grid-template-columns: 1fr; }
+  .mapping-arrow { transform: rotate(90deg); }
+}
+</style>
+</head>
+<body>
+<a class="tool-back" href="../../index.html">&larr; 툴 목록</a>
+<div class="header">
+<h1>인보이스 변환기</h1>
+<p>인보이스 엑셀을 업로드하면 이미지 포함 제품 목록으로 자동 변환합니다</p>
+</div>
+<div class="container">
+<div id="loadError" class="status-bar error" style="display:none;"></div>
+<!-- Step 1 -->
+<div class="card">
+<h2><span class="step">1</span> 인보이스 파일 업로드</h2>
+<div class="upload-area" id="uploadArea">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+<p>클릭하거나 파일을 드래그하세요</p>
+<p style="font-size:12px; color:#98a2b3; margin-top:4px;">.xlsx 파일만 지원</p>
+<div class="filename" id="fileName"></div>
+</div>
+<input type="file" id="fileInput" accept=".xlsx,.xls">
+</div>
+<!-- Step 2 -->
+<div class="card hidden" id="settingsCard">
+<h2><span class="step">2</span> 변환 설정</h2>
+<div class="settings-grid">
+<div class="field">
+<label>통화 선택</label>
+<select id="currency" onchange="onCurrencyChange()">
+<option value="CNY" selected>CNY (위안화)</option>
+<option value="USD">USD (달러)</option>
+</select>
+</div>
+<div class="field">
+<label id="rateLabel">환율 (1위안 = ?원)</label>
+<input type="number" id="exchangeRate" value="220" step="0.1">
+</div>
+<div class="field">
+<label>반올림 단위</label>
+<select id="roundUnit">
+<option value="100" selected>100원 단위</option>
+<option value="10">10원 단위</option>
+<option value="1000">1,000원 단위</option>
+</select>
+</div>
+<div class="field">
+<label>업체가 배수</label>
+<input type="number" id="vendorMulti" value="2" step="0.1">
+</div>
+<div class="field">
+<label>온라인가 배수</label>
+<input type="number" id="onlineMulti" value="3" step="0.1">
+</div>
+<div class="field">
+<label>데이터 시작 행</label>
+<input type="number" id="startRow" value="4" min="1">
+</div>
+<div class="field">
+<label>이미지 크기 (px)</label>
+<input type="number" id="imgSize" value="80" min="30" max="200">
+</div>
+</div>
+<h3 style="font-size:14px; font-weight:600; margin: 20px 0 8px;">열 매핑</h3>
+<p style="font-size:12px; color:#667085; margin-bottom:8px;">인보이스 양식이 다를 경우 열을 직접 지정하세요.</p>
+<div class="mapping-grid" id="mappingGrid"></div>
+<div class="btn-group">
+<button class="btn btn-primary" id="convertBtn" onclick="doConvert()">변환하기</button>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="card hidden" id="previewCard">
+<h2><span class="step">3</span> 변환 결과</h2>
+<div id="statusBar" class="status-bar"></div>
+<div class="stats" id="statsBar"></div>
+<div class="table-wrapper" id="previewTable"></div>
+<div class="btn-group">
+<button class="btn btn-outline" onclick="document.getElementById('settingsCard').classList.remove('hidden'); document.getElementById('settingsCard').scrollIntoView({behavior:'smooth'});">설정 수정</button>
+<button class="btn btn-success" id="downloadBtn" onclick="doDownload()">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+엑셀 다운로드 (이미지 포함)
+</button>
+</div>
+</div>
+</div>
+<script>
+// ============ Global error handler ============
+window.onerror = function(msg, src, line, col, err) {
+  var el = document.getElementById('loadError');
+  if (el) { el.style.display = 'block'; el.textContent = '오류: ' + msg; }
+  console.error('Error:', msg, src, line);
+};
+// ============ State ============
+var rawData = [];
+var headerRow = [];
+var fileArrayBuffer = null;
+var imageMap = {};
+var imageExtMap = {};
+var convertedRows = [];
+var CURRENCY_PRESETS = {
+  CNY: { rate: 220, label: '환율 (1위안 = ?원)' },
+  USD: { rate: 1500, label: '환율 (1달러 = ?원)' }
+};
+var MAPPING_FIELDS = [
+  { key: 'productName', label: '품명/DESCRIPTION', target: '제품명 (일부)', defaultMatch: ['품명','型号','모델','model','item','description','desc'] },
+  { key: 'color', label: '칼라/색상', target: '제품명 (일부)', defaultMatch: ['칼라','颜色','색상','color','컬러'] },
+  { key: 'quantity', label: '수량/UNIT', target: '수량', defaultMatch: ['수량','数量','qty','unit','ea','pcs'] },
+  { key: 'unitPrice', label: '단가/PRICE', target: '단가 (환율적용)', defaultMatch: ['단가','单价','price','uint'] }
+];
+function onCurrencyChange() {
+  var cur = document.getElementById('currency').value;
+  var preset = CURRENCY_PRESETS[cur];
+  document.getElementById('exchangeRate').value = preset.rate;
+  document.getElementById('rateLabel').textContent = preset.label;
+}
+// ============ Drag & Drop ============
+document.addEventListener('dragover', function(e) { e.preventDefault(); e.stopPropagation(); });
+document.addEventListener('drop', function(e) { e.preventDefault(); e.stopPropagation(); });
+var uploadArea = document.getElementById('uploadArea');
+var fileInput = document.getElementById('fileInput');
+uploadArea.addEventListener('click', function() { fileInput.click(); });
+uploadArea.addEventListener('dragenter', function(e) { e.preventDefault(); e.stopPropagation(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); e.stopPropagation(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', function(e) { e.preventDefault(); e.stopPropagation(); uploadArea.classList.remove('drag-over'); });
+uploadArea.addEventListener('drop', function(e) {
+  e.preventDefault(); e.stopPropagation();
+  uploadArea.classList.remove('drag-over');
+  var files = e.dataTransfer.files;
+  if (files && files.length > 0) { handleFile(files[0]); }
+});
+fileInput.addEventListener('change', function(e) {
+  if (e.target.files && e.target.files.length > 0) { handleFile(e.target.files[0]); }
+});
+// ============ File handling ============
+function handleFile(file) {
+  if (!file || !file.name) { showStatus('error', '파일을 읽을 수 없습니다.'); return; }
+  if (!file.name.match(/\.xlsx?$/i)) { showStatus('error', '.xlsx 파일만 지원합니다.'); return; }
+  document.getElementById('fileName').textContent = file.name;
+  uploadArea.classList.add('has-file');
+  showStatus('info', '파일을 읽는 중...');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var buf = e.target.result;
+      fileArrayBuffer = buf;
+      // Parse data — prefer 'invoice' sheet if it exists
+      var wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+      var targetSheet = wb.SheetNames[0];
+      for (var si = 0; si < wb.SheetNames.length; si++) {
+        if (wb.SheetNames[si].toLowerCase().indexOf('invoice') >= 0) { targetSheet = wb.SheetNames[si]; break; }
+      }
+      var ws = wb.Sheets[targetSheet];
+      rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      // Extract images then show settings
+      extractImages(buf).then(function() {
+        detectHeader();
+        document.getElementById('settingsCard').classList.remove('hidden');
+        document.getElementById('previewCard').classList.add('hidden');
+        showStatus('info', '파일 로드 완료 — 데이터 ' + rawData.length + '행, 이미지 ' + Object.keys(imageMap).length + '개 감지');
+      }).catch(function(err) {
+        console.error('Image extraction error:', err);
+        detectHeader();
+        document.getElementById('settingsCard').classList.remove('hidden');
+        showStatus('info', '파일 로드 완료 (이미지 추출 실패 — 데이터만 변환 가능)');
+      });
+    } catch (err) {
+      showStatus('error', '파일 파싱 오류: ' + err.message);
+      console.error(err);
+    }
+  };
+  reader.onerror = function() { showStatus('error', '파일을 읽을 수 없습니다.'); };
+  reader.readAsArrayBuffer(file);
+}
+// ============ Image extraction ============
+function extractImages(buf) {
+  imageMap = {};
+  imageExtMap = {};
+  return JSZip.loadAsync(buf).then(function(zip) {
+    var relsFile = zip.file('xl/drawings/_rels/drawing1.xml.rels');
+    if (!relsFile) return Promise.resolve();
+    return relsFile.async('text').then(function(relsXml) {
+      var relsDoc = new DOMParser().parseFromString(relsXml, 'text/xml');
+      var ridToFile = {};
+      var rels = relsDoc.getElementsByTagName('Relationship');
+      for (var i = 0; i < rels.length; i++) {
+        var rel = rels[i];
+        if (rel.getAttribute('Type') && rel.getAttribute('Type').indexOf('image') >= 0) {
+          ridToFile[rel.getAttribute('Id')] = rel.getAttribute('Target').replace('../', 'xl/');
+        }
+      }
+      var drawFile = zip.file('xl/drawings/drawing1.xml');
+      if (!drawFile) return Promise.resolve();
+      return drawFile.async('text').then(function(drawXml) {
+        var drawDoc = new DOMParser().parseFromString(drawXml, 'text/xml');
+        var nsXdr = 'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+        var nsA = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+        var nsR = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+        var rowToFile = {};
+        var anchors = drawDoc.getElementsByTagNameNS(nsXdr, 'twoCellAnchor');
+        for (var a = 0; a < anchors.length; a++) {
+          var anchor = anchors[a];
+          var fromEls = anchor.getElementsByTagNameNS(nsXdr, 'from');
+          if (!fromEls.length) continue;
+          var rowEls = fromEls[0].getElementsByTagNameNS(nsXdr, 'row');
+          if (!rowEls.length) continue;
+          var row = parseInt(rowEls[0].textContent);
+          var blips = anchor.getElementsByTagNameNS(nsA, 'blip');
+          if (!blips.length) continue;
+          var rid = blips[0].getAttributeNS(nsR, 'embed') || blips[0].getAttribute('r:embed');
+          if (rid && ridToFile[rid] && !rowToFile[row]) { rowToFile[row] = ridToFile[rid]; }
+        }
+        // Also check oneCellAnchor
+        var oneAnchors = drawDoc.getElementsByTagNameNS(nsXdr, 'oneCellAnchor');
+        for (var b = 0; b < oneAnchors.length; b++) {
+          var oanchor = oneAnchors[b];
+          var oFromEls = oanchor.getElementsByTagNameNS(nsXdr, 'from');
+          if (!oFromEls.length) continue;
+          var oRowEls = oFromEls[0].getElementsByTagNameNS(nsXdr, 'row');
+          if (!oRowEls.length) continue;
+          var orow = parseInt(oRowEls[0].textContent);
+          var oblips = oanchor.getElementsByTagNameNS(nsA, 'blip');
+          if (!oblips.length) continue;
+          var orid = oblips[0].getAttributeNS(nsR, 'embed') || oblips[0].getAttribute('r:embed');
+          if (orid && ridToFile[orid] && !rowToFile[orow]) { rowToFile[orow] = ridToFile[orid]; }
+        }
+        // Load image data
+        var promises = [];
+        Object.keys(rowToFile).forEach(function(row) {
+          var filePath = rowToFile[row];
+          var imgFile = zip.file(filePath);
+          if (imgFile) {
+            promises.push(
+              imgFile.async('base64').then(function(data) {
+                imageMap[row] = data;
+                imageExtMap[row] = filePath.split('.').pop().toLowerCase();
+              })
+            );
+          }
+        });
+        return Promise.all(promises);
+      });
+    });
+  });
+}
+// ============ Header detection ============
+function detectHeader() {
+  var keywords = ['품명','수량','단가','型号','数量','单价','칼라','颜色','description','unit','price','amount'];
+  var headerIdx = 1;
+  var bestScore = 0;
+  for (var i = 0; i < Math.min(30, rawData.length); i++) {
+    var row = rawData[i].map(function(c) { return String(c).toLowerCase(); });
+    var matches = keywords.filter(function(k) { return row.some(function(c) { return c.indexOf(k.toLowerCase()) >= 0; }); });
+    if (matches.length > bestScore) { bestScore = matches.length; headerIdx = i; }
+  }
+  headerRow = rawData[headerIdx].map(function(c) { return String(c).trim(); });
+  document.getElementById('startRow').value = headerIdx + 2;
+  // Auto-detect currency from header/nearby rows
+  var searchArea = rawData.slice(Math.max(0, headerIdx - 2), headerIdx + 3);
+  var allText = searchArea.map(function(r) { return r.join(' '); }).join(' ').toUpperCase();
+  if (allText.indexOf('USD') >= 0 || allText.indexOf('DOLLAR') >= 0) {
+    document.getElementById('currency').value = 'USD'; onCurrencyChange();
+  } else {
+    document.getElementById('currency').value = 'CNY'; onCurrencyChange();
+  }
+  buildMappingUI();
+}
+function buildMappingUI() {
+  var grid = document.getElementById('mappingGrid');
+  grid.innerHTML = '';
+  MAPPING_FIELDS.forEach(function(field) {
+    var bestIdx = -1;
+    for (var i = 0; i < headerRow.length; i++) {
+      var h = headerRow[i].toLowerCase();
+      if (field.defaultMatch.some(function(m) { return h.indexOf(m.toLowerCase()) >= 0; })) { bestIdx = i; break; }
+    }
+    var select = document.createElement('select');
+    select.id = 'map_' + field.key;
+    var opts = '<option value="-1">— 선택안함 —</option>';
+    headerRow.forEach(function(h, i) {
+      if (!h || h === 'undefined') return;
+      opts += '<option value="' + i + '"' + (i === bestIdx ? ' selected' : '') + '>[' + colLetter(i) + '] ' + h + '</option>';
+    });
+    select.innerHTML = opts;
+    var arrow = document.createElement('div');
+    arrow.className = 'mapping-arrow';
+    arrow.textContent = '→';
+    var label = document.createElement('div');
+    label.className = 'mapping-label';
+    label.textContent = field.label + ' → ' + field.target;
+    grid.appendChild(select);
+    grid.appendChild(arrow);
+    grid.appendChild(label);
+  });
+}
+function colLetter(i) {
+  var s = '';
+  i++;
+  while (i > 0) { i--; s = String.fromCharCode(65 + (i % 26)) + s; i = Math.floor(i / 26); }
+  return s;
+}
+// ============ Convert ============
+function doConvert() {
+  try {
+    var rate = parseFloat(document.getElementById('exchangeRate').value) || 220;
+    var roundUnit = parseInt(document.getElementById('roundUnit').value) || 100;
+    var vendorMulti = parseFloat(document.getElementById('vendorMulti').value) || 2;
+    var onlineMulti = parseFloat(document.getElementById('onlineMulti').value) || 3;
+    var startRow = parseInt(document.getElementById('startRow').value) || 4;
+    var colProduct = parseInt(document.getElementById('map_productName').value);
+    var colColor = parseInt(document.getElementById('map_color').value);
+    var colQty = parseInt(document.getElementById('map_quantity').value);
+    var colPrice = parseInt(document.getElementById('map_unitPrice').value);
+    if (colQty === -1 || colPrice === -1) { showStatus('error', '수량과 단가 열은 반드시 매핑해야 합니다.'); return; }
+    var dataRows = rawData.slice(startRow - 1);
+    convertedRows = [];
+    var lastProduct = '';
+    for (var idx = 0; idx < dataRows.length; idx++) {
+      var row = dataRows[idx];
+      var qty = parseFloat(row[colQty]);
+      var price = parseFloat(row[colPrice]);
+      if (isNaN(qty) || isNaN(price) || qty === 0) continue;
+      // Update product name if current row has one
+      if (colProduct >= 0 && row[colProduct] && String(row[colProduct]).trim()) {
+        lastProduct = String(row[colProduct]).trim();
+      }
+      // Skip total/summary rows: no product name in this row AND no forward-filled name
+      if (!lastProduct) continue;
+      var color = (colColor >= 0 && row[colColor]) ? String(row[colColor]).trim() : '';
+      var itemName = lastProduct;
+      if (color) itemName += '-' + color;
+      var krwPrice = roundHalfUp(price * rate, roundUnit);
+      var vendorPrice = roundHalfUp(krwPrice * vendorMulti, roundUnit);
+      var onlinePrice = roundHalfUp(krwPrice * onlineMulti, roundUnit);
+      var totalAmt = qty * krwPrice;
+      var sheetRow = (startRow - 1) + idx;
+      var img = imageMap[sheetRow] || null;
+      var imgExt = imageExtMap[sheetRow] || 'png';
+      convertedRows.push({
+        itemName: itemName, qty: qty, krwPrice: krwPrice, vendorPrice: vendorPrice,
+        onlinePrice: onlinePrice, totalAmt: totalAmt, img: img, imgExt: imgExt
+      });
+    }
+    if (!convertedRows.length) { showStatus('error', '변환할 데이터가 없습니다. 시작 행과 열 매핑을 확인하세요.'); return; }
+    var withImg = convertedRows.filter(function(r) { return r.img; }).length;
+    var curLabel = document.getElementById('currency').value === 'USD' ? 'USD' : 'CNY';
+    showStatus('success', '총 ' + convertedRows.length + '건 변환 완료 (' + curLabel + ' x' + rate + ', 이미지 ' + withImg + '건)');
+    renderPreview();
+    document.getElementById('previewCard').classList.remove('hidden');
+    setTimeout(function() { document.getElementById('previewCard').scrollIntoView({ behavior: 'smooth' }); }, 100);
+  } catch (err) {
+    showStatus('error', '변환 오류: ' + err.message);
+    console.error(err);
+  }
+}
+function roundHalfUp(v, u) { return Math.floor(v / u + 0.5) * u; }
+// ============ Preview ============
+function renderPreview() {
+  var totalQty = 0, totalAmt = 0, imgCount = 0;
+  for (var i = 0; i < convertedRows.length; i++) {
+    totalQty += convertedRows[i].qty;
+    totalAmt += convertedRows[i].totalAmt;
+    if (convertedRows[i].img) imgCount++;
+  }
+  document.getElementById('statsBar').innerHTML =
+    '<div class="stat"><div class="value">' + convertedRows.length + '</div><div class="label">총 품목</div></div>' +
+    '<div class="stat"><div class="value">' + totalQty.toLocaleString() + '</div><div class="label">총 수량</div></div>' +
+    '<div class="stat"><div class="value">₩' + totalAmt.toLocaleString() + '</div><div class="label">총 금액</div></div>' +
+    '<div class="stat"><div class="value">' + imgCount + '</div><div class="label">이미지</div></div>';
+  var html = '<table><thead><tr><th>이미지</th><th>제품명</th><th>수량</th><th>단가</th><th>업체가</th><th>온라인가</th><th>총금액</th></tr></thead><tbody>';
+  for (var j = 0; j < convertedRows.length; j++) {
+    var r = convertedRows[j];
+    var imgCell = r.img ? '<img src="data:image/' + r.imgExt + ';base64,' + r.img + '" alt="">' : '<div class="no-img">no img</div>';
+    html += '<tr><td>' + imgCell + '</td><td>' + r.itemName + '</td><td>' + r.qty.toLocaleString() + '</td><td>₩' + r.krwPrice.toLocaleString() + '</td><td>₩' + r.vendorPrice.toLocaleString() + '</td><td>₩' + r.onlinePrice.toLocaleString() + '</td><td>₩' + r.totalAmt.toLocaleString() + '</td></tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('previewTable').innerHTML = html;
+}
+// ============ Download ============
+function doDownload() {
+  var btn = document.getElementById('downloadBtn');
+  btn.disabled = true;
+  btn.textContent = '생성 중...';
+  try {
+    var imgSize = parseInt(document.getElementById('imgSize').value) || 80;
+    // Check if ExcelJS is available
+    if (typeof ExcelJS === 'undefined') {
+      // Fallback: download without images using SheetJS
+      downloadWithoutImages();
+      return;
+    }
+    var wb = new ExcelJS.Workbook();
+    var ws = wb.addWorksheet('제품목록');
+    ws.columns = [
+      { header: '이미지', key: 'img', width: Math.ceil(imgSize / 7) + 2 },
+      { header: '제품명', key: 'name', width: 45 },
+      { header: '수량', key: 'qty', width: 10 },
+      { header: '단가', key: 'price', width: 14 },
+      { header: '업체가', key: 'vendor', width: 14 },
+      { header: '온라인가', key: 'online', width: 14 },
+      { header: '총금액', key: 'total', width: 16 }
+    ];
+    // Header style
+    ws.getRow(1).eachCell(function(cell) {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    ws.getRow(1).height = 28;
+    for (var i = 0; i < convertedRows.length; i++) {
+      var r = convertedRows[i];
+      var rowNum = i + 2;
+      ws.addRow({ img: '', name: r.itemName, qty: r.qty, price: r.krwPrice, vendor: r.vendorPrice, online: r.onlinePrice, total: r.totalAmt });
+      var exRow = ws.getRow(rowNum);
+      exRow.height = imgSize * 0.75;
+      exRow.alignment = { vertical: 'middle' };
+      exRow.getCell('price').numFmt = '#,##0';
+      exRow.getCell('vendor').numFmt = '#,##0';
+      exRow.getCell('online').numFmt = '#,##0';
+      exRow.getCell('total').numFmt = '#,##0';
+      exRow.getCell('qty').numFmt = '#,##0';
+      if (r.img) {
+        var imageId = wb.addImage({ base64: r.img, extension: r.imgExt });
+        ws.addImage(imageId, { tl: { col: 0.1, row: rowNum - 0.9 }, ext: { width: imgSize, height: imgSize } });
+      }
+    }
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    wb.xlsx.writeBuffer().then(function(buffer) {
+      var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = '제품목록_변환결과.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      resetDownloadBtn();
+    }).catch(function(err) {
+      showStatus('error', '다운로드 오류: ' + err.message);
+      console.error(err);
+      resetDownloadBtn();
+    });
+  } catch (err) {
+    showStatus('error', '다운로드 오류: ' + err.message);
+    console.error(err);
+    // Fallback
+    downloadWithoutImages();
+  }
+}
+function downloadWithoutImages() {
+  try {
+    var data = [['이미지', '제품명', '수량', '단가', '업체가', '온라인가', '총금액']];
+    for (var i = 0; i < convertedRows.length; i++) {
+      var r = convertedRows[i];
+      data.push(['', r.itemName, r.qty, r.krwPrice, r.vendorPrice, r.onlinePrice, r.totalAmt]);
+    }
+    var ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{ wch: 12 }, { wch: 45 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '제품목록');
+    XLSX.writeFile(wb, '제품목록_변환결과.xlsx');
+    showStatus('info', '이미지 없이 다운로드되었습니다 (ExcelJS 로드 실패)');
+  } catch (err) {
+    showStatus('error', '다운로드 실패: ' + err.message);
+  }
+  resetDownloadBtn();
+}
+function resetDownloadBtn() {
+  var btn = document.getElementById('downloadBtn');
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> 엑셀 다운로드 (이미지 포함)';
+}
+function showStatus(type, msg) {
+  var bar = document.getElementById('statusBar');
+  bar.className = 'status-bar ' + type;
+  bar.textContent = msg;
+}
+</script>
+</body>
+</html>

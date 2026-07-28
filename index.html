@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>직원용 툴 모음</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --surface: #181b22;
+    --surface-2: #1f2430;
+    --border: #2a303c;
+    --text: #e8eaf0;
+    --text-dim: #9aa3b2;
+    --accent: #6ea8fe;
+    --accent-soft: rgba(110,168,254,0.14);
+    --radius: 14px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.25);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f0f2f5;
+      --border: #e3e6eb;
+      --text: #1a1d23;
+      --text-dim: #6b7280;
+      --accent: #2563eb;
+      --accent-soft: rgba(37,99,235,0.08);
+      --shadow: 0 1px 2px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+      "Pretendard", "Noto Sans KR", "Malgun Gothic", Segoe UI, Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  header.page { margin-bottom: 32px; }
+  .page h1 { font-size: 30px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .page p.sub { color: var(--text-dim); margin: 0; font-size: 15px; }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    margin: 28px 0 20px;
+  }
+  .search {
+    flex: 1 1 240px; position: relative;
+  }
+  .search input {
+    width: 100%; padding: 11px 14px 11px 40px; font-size: 15px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); outline: none;
+  }
+  .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-dim); }
+  .count { color: var(--text-dim); font-size: 14px; white-space: nowrap; }
+
+  .tags-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+  .chip {
+    font-size: 13px; padding: 6px 13px; border-radius: 999px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-dim);
+    transition: all .12s ease; user-select: none;
+  }
+  .chip:hover { color: var(--text); border-color: var(--accent); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .grid {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column;
+    text-decoration: none; color: inherit; transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow); }
+  .card h3 { margin: 0 0 8px; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+  .card .desc { color: var(--text-dim); font-size: 14px; margin: 0 0 16px; flex: 1; }
+  .card .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; }
+  .card .tag {
+    font-size: 11.5px; padding: 3px 9px; border-radius: 6px;
+    background: var(--accent-soft); color: var(--accent); font-weight: 600;
+  }
+  .card .foot {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12.5px; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 12px;
+  }
+  .card .open { color: var(--accent); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+
+  .empty {
+    text-align: center; padding: 64px 24px; color: var(--text-dim);
+    border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface);
+  }
+
+  footer.page { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border);
+    color: var(--text-dim); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  footer.page a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <h1>🧰 직원용 툴 모음</h1>
+    <p class="sub">사내에서 만든 툴들을 한곳에서. 카드를 눌러 바로 사용하세요.</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="search" type="text" placeholder="툴 이름·설명 검색…" autocomplete="off" />
+    </div>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="tags-bar" id="tags"></div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">검색 결과가 없습니다.</div>
+
+  <footer class="page">
+    <span>총 <b id="total">0</b>개의 툴</span>
+    <span>새 툴 추가 방법은 <a href="README.md">README</a>를 참고하세요.</span>
+  </footer>
+</div>
+
+<script src="tools.js"></script>
+<script>
+  const TOOLS = (window.TOOLS || []).slice();
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  const countEl = document.getElementById('count');
+  const totalEl = document.getElementById('total');
+  const tagsBar = document.getElementById('tags');
+  const searchInput = document.getElementById('search');
+
+  let activeTag = null;
+  let query = '';
+
+  totalEl.textContent = TOOLS.length;
+
+  // 태그 칩 만들기
+  const allTags = [...new Set(TOOLS.flatMap(t => t.tags || []))].sort();
+  function renderTags() {
+    tagsBar.innerHTML = '';
+    const mk = (label, val) => {
+      const c = document.createElement('span');
+      c.className = 'chip' + ((activeTag === val) ? ' active' : '');
+      c.textContent = label;
+      c.onclick = () => { activeTag = (activeTag === val) ? null : val; render(); };
+      return c;
+    };
+    tagsBar.appendChild(mk('전체', null));
+    allTags.forEach(t => tagsBar.appendChild(mk('#' + t, t)));
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  function render() {
+    renderTags();
+    const q = query.trim().toLowerCase();
+    const list = TOOLS.filter(t => {
+      const matchTag = !activeTag || (t.tags || []).includes(activeTag);
+      const hay = (t.name + ' ' + (t.description||'') + ' ' + (t.tags||[]).join(' ')).toLowerCase();
+      const matchQ = !q || hay.includes(q);
+      return matchTag && matchQ;
+    });
+    countEl.textContent = list.length + '개 표시 중';
+    grid.innerHTML = '';
+    empty.style.display = list.length ? 'none' : 'block';
+    list.forEach(t => {
+      const a = document.createElement('a');
+      a.className = 'card';
+      a.href = t.path;
+      const tags = (t.tags||[]).map(x => `<span class="tag">${esc(x)}</span>`).join('');
+      a.innerHTML = `
+        <h3>${esc(t.name)}</h3>
+        <p class="desc">${esc(t.description||'')}</p>
+        <div class="meta">${tags}</div>
+        <div class="foot">
+          <span>${t.owner ? '👤 ' + esc(t.owner) : ''}${t.updated ? ' · ' + esc(t.updated) : ''}</span>
+          <span class="open">열기 →</span>
+        </div>`;
+      grid.appendChild(a);
+    });
+  }
+
+  searchInput.addEventListener('input', e => { query = e.target.value; render(); });
+  render();
+</script>
+</body>
+</html>
