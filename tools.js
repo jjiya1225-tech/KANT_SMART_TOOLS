@@ -17,6 +17,14 @@
 
 window.TOOLS = [
   {
+    name: "융스위치 단가",
+    description: "색상·구 수·기능 모듈을 조합하면 단가를 자동 계산해 주는 툴입니다.",
+    path: "tools/jung-switch/",
+    tags: ["융", "스위치", "모듈", "단가"],
+    owner: "KANT",
+    updated: "2026-07-28",
+  },
+{
     name: "마그네틱 레일 계산기",
     description: "설치 길이·형상을 넣으면 필요한 레일 조합·절단 계획·부속품·안정기를 자동 계산합니다.",
     path: "tools/rail-calculator/",
@@ -32,14 +40,15 @@ window.TOOLS = [
     owner: "KANT",
     updated: "2026-07-28",
   },
-  {
-    name: "컬러 피커 (예시)",
-    description: "이미지에서 색상 코드를 추출하는 예시 툴입니다. 실제 툴로 교체하세요.",
-    path: "tools/example-color-picker/",
-    tags: ["예시", "디자인"],
+{
+    name: "인보이스 변환기",
+    description: "인보이스 엑셀(.xlsx)을 업로드하면, 제품 목록 엑셀로 변환해 주는 툴입니다.",
+    path: "tools/invoice-converter/",
+    tags: ["인보이스", "엑셀", "변환", "환율"],
     owner: "KANT",
     updated: "2026-07-28",
   },
+
 
   // ↓↓↓ 아래에 실제 툴들을 추가하세요 (항목을 복사해서 채우기) ↓↓↓
   // {
