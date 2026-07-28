@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rail Calculator</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #222; line-height: 1.6; }
+.calculator { max-width: 560px; margin: 40px auto; background: #fff; border-radius: 20px; padding: 48px 36px; box-shadow: 0 2px 20px rgba(0,0,0,0.06); }
+h1 { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 8px; }
+.subtitle { text-align: center; color: #888; font-size: 14px; margin-bottom: 36px; }
+.section-label { text-align: center; font-weight: 700; font-size: 16px; margin-bottom: 16px; }
+.option-selector { display: flex; gap: 10px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap; }
+.option-btn { padding: 12px 24px; border-radius: 50px; border: 1.5px solid #ddd; background: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #555; }
+.option-btn:hover { border-color: #aaa; }
+.option-btn.active { background: #222; color: #fff; border-color: #222; }
+.shape-selector { display: flex; gap: 12px; justify-content: center; margin-bottom: 32px; }
+.shape-btn { padding: 12px 32px; border-radius: 50px; border: 1.5px solid #ddd; background: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #555; }
+.shape-btn:hover { border-color: #aaa; }
+.shape-btn.active { background: #222; color: #fff; border-color: #222; }
+.input-section { margin-bottom: 28px; }
+.input-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; justify-content: center; }
+.input-label { font-size: 15px; font-weight: 600; min-width: 100px; text-align: right; }
+.input-wrap { position: relative; }
+.length-input { width: 200px; padding: 14px 50px 14px 18px; border: 1.5px solid #ddd; border-radius: 12px; font-size: 16px; outline: none; transition: border-color 0.2s; text-align: center; }
+.length-input:focus { border-color: #222; }
+.length-input::placeholder { color: #bbb; }
+.unit { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #999; font-size: 14px; pointer-events: none; }
+.notes { text-align: center; font-size: 13px; color: #999; margin-top: 8px; line-height: 1.8; }
+.calc-btn { display: block; width: 100%; max-width: 320px; margin: 32px auto 0; padding: 16px; background: #222; color: #fff; border: none; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.calc-btn:hover { background: #444; }
+.results { display: none; margin-top: 36px; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.results-title { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 24px; padding-top: 28px; border-top: 1px solid #eee; }
+.result-card { background: #f8f8f8; border-radius: 14px; padding: 20px 24px; margin-bottom: 12px; }
+.result-card-title { font-size: 13px; color: #888; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.result-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+.result-item-name { font-size: 15px; font-weight: 500; }
+.result-item-value { font-size: 15px; font-weight: 700; color: #222; }
+.cut-detail { font-size: 13px; color: #777; margin-top: 4px; padding-left: 4px; }
+.cut-list { margin-top: 12px; }
+.cut-group-label { font-size: 13px; font-weight: 700; color: #555; padding: 8px 4px 4px; margin-top: 6px; }
+.cut-group-label:first-child { margin-top: 0; }
+.cut-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #fff; border-radius: 8px; margin-bottom: 6px; font-size: 14px; }
+.cut-row-label { font-weight: 600; color: #555; min-width: 56px; flex-shrink: 0; }
+.cut-row-product { font-size: 11px; font-weight: 700; color: #fff; background: #555; padding: 2px 8px; border-radius: 4px; flex-shrink: 0; }
+.cut-row-product.p1m { background: #2563eb; }
+.cut-row-product.p2m { background: #222; }
+.cut-row-product.p3m { background: #7c3aed; }
+.cut-segments { display: flex; gap: 6px; flex-wrap: wrap; }
+.cut-seg { background: #222; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+.cut-seg.waste { background: #ddd; color: #999; }
+.no-cut-tag { font-size: 11px; color: #059669; font-weight: 600; margin-left: 4px; }
+.error-msg { text-align: center; color: #e74c3c; font-size: 14px; font-weight: 600; margin-top: 20px; }
+.shape-diagram { display: flex; justify-content: center; margin-bottom: 24px; }
+.shape-diagram svg { max-width: 200px; }
+.install-diagram { background: #fafafa; border-radius: 14px; padding: 24px 16px; margin-bottom: 12px; overflow-x: auto; }
+.install-diagram svg { display: block; margin: 0 auto; }
+.diagram-legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #666; }
+.legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+.power-card { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border-radius: 14px; padding: 22px 24px; margin-bottom: 12px; color: #fff; }
+.power-card .result-card-title { color: #94a3b8; }
+.power-card .result-item-name { color: #cbd5e1; }
+.power-card .result-item-value { color: #fff; }
+.power-recommend { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: rgba(255,255,255,0.08); border-radius: 10px; margin-top: 12px; margin-bottom: 6px; }
+.power-icon { width: 44px; height: 44px; background: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.power-icon svg { width: 24px; height: 24px; }
+.power-info { flex: 1; }
+.power-info-capacity { font-size: 20px; font-weight: 800; color: #f59e0b; }
+.power-info-desc { font-size: 13px; color: #94a3b8; margin-top: 2px; }
+.power-info-count { font-size: 15px; font-weight: 700; color: #fff; text-align: right; flex-shrink: 0; }
+.power-note { font-size: 12px; color: #64748b; margin-top: 8px; padding-left: 4px; }
+.memo-card { background: #f8f8f8; border-radius: 14px; padding: 20px 24px; margin-bottom: 12px; }
+.memo-textarea { width: 100%; min-height: 80px; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 12px 14px; font-size: 14px; font-family: inherit; resize: vertical; outline: none; transition: border-color 0.2s; background: #fff; color: #333; }
+.memo-textarea:focus { border-color: #222; }
+.memo-textarea::placeholder { color: #bbb; }
+.export-bar { display: flex; gap: 10px; justify-content: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+.export-btn { display: flex; align-items: center; gap: 7px; padding: 10px 20px; border: 1.5px solid #ddd; border-radius: 10px; background: #fff; font-size: 14px; font-weight: 600; color: #555; cursor: pointer; transition: all 0.2s; }
+.export-btn:hover { border-color: #222; color: #222; }
+.export-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.selected-info { text-align: center; font-size: 13px; color: #666; margin-bottom: 20px; padding: 8px 16px; background: #f0f0f0; border-radius: 8px; display: inline-block; }
+.selected-info-wrap { text-align: center; margin-bottom: 8px; }
+.tool-back { position: fixed; top: 16px; left: 16px; color: #555; text-decoration: none; font-size: 14px; font-weight: 600; z-index: 10; }
+.tool-back:hover { color: #222; }
+</style>
+</head>
+<body>
+<a class="tool-back" href="../../index.html">&larr; 툴 목록</a>
+<div class="calculator" id="calculatorRoot">
+<h1>Rail Calculator</h1>
+<p class="subtitle">설치 길이를 입력하면 필요한 레일 조합을 자동으로 계산해 드립니다.</p>
+<div class="section-label">제품 선택</div>
+<div class="option-selector" id="productSelector">
+<button class="option-btn active" data-product="5mm" onclick="selectProduct('5mm')">5mm Magnetic</button>
+<button class="option-btn" data-product="15mm" onclick="selectProduct('15mm')">15mm Magnetic</button>
+<button class="option-btn" data-product="17mm" onclick="selectProduct('17mm')">17mm Magnetic</button>
+<button class="option-btn" data-product="28mm" onclick="selectProduct('28mm')">28mm Magnetic</button>
+</div>
+<div class="section-label">설치 위치</div>
+<div class="option-selector" id="locationSelector">
+<button class="option-btn active" data-location="천장-천장" onclick="selectLocation('천장-천장')">천장-천장</button>
+<button class="option-btn" data-location="천장-벽면" onclick="selectLocation('천장-벽면')">천장-벽면</button>
+</div>
+<div class="section-label">설치 형상</div>
+<div class="shape-selector">
+<button class="shape-btn active" data-shape="straight" onclick="selectShape('straight')">일(ㅡ)자</button>
+<button class="shape-btn" data-shape="l-shape" onclick="selectShape('l-shape')">ㄱ자</button>
+<button class="shape-btn" data-shape="square" onclick="selectShape('square')">ㅁ자</button>
+</div>
+<div class="shape-diagram" id="shapeDiagram"></div>
+<div class="input-section" id="inputSection"></div>
+<div class="notes" id="notesArea"></div>
+<button class="calc-btn" onclick="calculate()">조합 계산하기</button>
+<div class="results" id="results"></div>
+</div>
+<script>
+// ─── Product configuration ───
+const CORNER_SIZES = {
+  '5mm': { '천장-천장': 46, '천장-벽면': 52 },
+  '15mm': { '천장-천장': 42, '천장-벽면': 42 },
+  '17mm': { '천장-천장': 45, '천장-벽면': 45 },
+  '28mm': { '천장-천장': 80, '천장-벽면': 80 }
+};
+// Available rail sizes per product (descending order)
+const PRODUCT_RAILS = {
+  '5mm': [2000, 1000],
+  '15mm': [2000, 1000],
+  '17mm': [3000, 2000, 1000],
+  '28mm': [3000, 2000, 1000]
+};
+let currentProduct = '5mm';
+let currentLocation = '천장-천장';
+let currentShape = 'straight';
+function getCornerSize() { return CORNER_SIZES[currentProduct][currentLocation]; }
+function getRailSizes() { return PRODUCT_RAILS[currentProduct]; }
+function railLabel(size) { if (size === 3000) return '3M'; if (size === 2000) return '2M'; return '1M'; }
+function railCssClass(size) { if (size === 3000) return 'p3m'; if (size === 2000) return 'p2m'; return 'p1m'; }
+function selectProduct(product) {
+  currentProduct = product;
+  document.querySelectorAll('#productSelector .option-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.product === product));
+  updateNotes();
+  document.getElementById('results').style.display = 'none';
+}
+function selectLocation(location) {
+  currentLocation = location;
+  document.querySelectorAll('#locationSelector .option-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.location === location));
+  updateNotes();
+  document.getElementById('results').style.display = 'none';
+}
+function selectShape(shape) {
+  currentShape = shape;
+  document.querySelectorAll('.shape-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.shape === shape));
+  renderInputs();
+  renderDiagram();
+  updateNotes();
+  document.getElementById('results').style.display = 'none';
+}
+function updateNotes() {
+  const cornerSize = getCornerSize();
+  const railSizes = getRailSizes();
+  const railDesc = railSizes.map(r => railLabel(r)).join(' / ');
+  const notesEl = document.getElementById('notesArea');
+  if (currentShape === 'straight') {
+    notesEl.innerHTML = `* 레일 규격: ${railDesc} (재단 최소화 자동 적용)`;
+  } else {
+    notesEl.innerHTML = `* ㄱ자 연결부속(${cornerSize}mm) 여유가 자동 반영됩니다.<br>* 레일 규격: ${railDesc} (재단 최소화 자동 적용)`;
+  }
+}
+function renderDiagram() {
+  const c = document.getElementById('shapeDiagram');
+  if (currentShape === 'straight') {
+    c.innerHTML = `<svg viewBox="0 0 200 40" width="180"><line x1="10" y1="20" x2="190" y2="20" stroke="#222" stroke-width="4" stroke-linecap="round"/><text x="100" y="14" text-anchor="middle" font-size="11" fill="#888">길이</text></svg>`;
+  } else if (currentShape === 'l-shape') {
+    c.innerHTML = `<svg viewBox="0 0 160 160" width="140"><polyline points="20,20 20,90 140,90" fill="none" stroke="#222" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="90" r="6" fill="#f0f0f0" stroke="#222" stroke-width="2"/><text x="8" y="58" text-anchor="middle" font-size="11" fill="#888">세로</text><text x="80" y="82" text-anchor="middle" font-size="11" fill="#888">가로</text></svg>`;
+  } else {
+    c.innerHTML = `<svg viewBox="0 0 180 140" width="160"><rect x="20" y="20" width="140" height="100" fill="none" stroke="#222" stroke-width="4" rx="2"/><circle cx="20" cy="20" r="5" fill="#f0f0f0" stroke="#222" stroke-width="2"/><circle cx="160" cy="20" r="5" fill="#f0f0f0" stroke="#222" stroke-width="2"/><circle cx="20" cy="120" r="5" fill="#f0f0f0" stroke="#222" stroke-width="2"/><circle cx="160" cy="120" r="5" fill="#f0f0f0" stroke="#222" stroke-width="2"/><text x="90" y="16" text-anchor="middle" font-size="11" fill="#888">가로</text><text x="170" y="74" text-anchor="start" font-size="11" fill="#888">세로</text></svg>`;
+  }
+}
+function renderInputs() {
+  const s = document.getElementById('inputSection');
+  if (currentShape === 'straight') {
+    s.innerHTML = `<div class="input-row"><span class="input-label">길이 (mm):</span><div class="input-wrap"><input type="number" class="length-input" id="len1" placeholder="예: 1000" min="1"><span class="unit">mm</span></div></div>`;
+  } else {
+    s.innerHTML = `<div class="input-row"><span class="input-label">가로 (mm):</span><div class="input-wrap"><input type="number" class="length-input" id="len1" placeholder="예: ${currentShape==='l-shape'?'1500':'2000'}" min="1"><span class="unit">mm</span></div></div>
+    <div class="input-row"><span class="input-label">세로 (mm):</span><div class="input-wrap"><input type="number" class="length-input" id="len2" placeholder="예: ${currentShape==='l-shape'?'1000':'1500'}" min="1"><span class="unit">mm</span></div></div>`;
+  }
+}
+function getInputs() {
+  const v1 = parseInt(document.getElementById('len1')?.value);
+  const v2 = document.getElementById('len2') ? parseInt(document.getElementById('len2').value) : null;
+  return { v1, v2 };
+}
+// ─── Segment colors ───
+const SEG_COLORS = ['#2563eb','#dc2626','#059669','#d97706','#7c3aed','#db2777','#0891b2','#65a30d'];
+// ─── Find smallest rail size that can contain a given length ───
+function findSmallestFittingRail(length, railSizes) {
+  let best = railSizes[0];
+  for (let i = railSizes.length - 1; i >= 0; i--) {
+    if (railSizes[i] >= length) { best = railSizes[i]; break; }
+  }
+  return best;
+}
+// ─── Installation diagram (SVG) ───
+function renderInstallationDiagram(sides, corners, allSegments, cornerSize) {
+  const RAIL_THICK = 10, CORNER_BOX = 14, PAD = 60, DIM_GAP = 22, FONT = 11;
+  let segColorMap = {}, colorIdx = 0;
+  allSegments.forEach(seg => { const k = seg.sideLabel+'_'+seg.length; if (!segColorMap[k]) segColorMap[k] = SEG_COLORS[colorIdx++ % SEG_COLORS.length]; });
+  let sideSegments = {};
+  sides.forEach(s => { sideSegments[s.label] = []; });
+  allSegments.forEach(seg => { if (sideSegments[seg.sideLabel]) sideSegments[seg.sideLabel].push(seg); });
+  const maxInput = Math.max(...sides.map(s => s.inputLength));
+  const scale = Math.min(380 / maxInput, 0.25);
+  let svgParts = [], usedColors = {};
+  if (currentShape === 'straight') {
+    const totalW = sides[0].inputLength * scale, svgW = totalW + PAD*2, svgH = 100, y = svgH/2, x0 = PAD;
+    let cx = x0;
+    const segs = sideSegments[sides[0].label] || allSegments;
+    segs.forEach((seg, i) => {
+      const w = seg.length * scale, k = seg.sideLabel+'_'+seg.length, color = segColorMap[k];
+      usedColors[k] = { color, label: `${seg.sideLabel} ${seg.length}mm` };
+      svgParts.push(`<rect x="${cx}" y="${y-RAIL_THICK/2}" width="${w}" height="${RAIL_THICK}" rx="3" fill="${color}"/>`);
+      svgParts.push(`<text x="${cx+w/2}" y="${y+RAIL_THICK/2+16}" text-anchor="middle" font-size="${FONT}" font-weight="600" fill="${color}">${seg.length}mm</text>`);
+      if (i < segs.length-1) svgParts.push(`<line x1="${cx+w}" y1="${y-8}" x2="${cx+w}" y2="${y+8}" stroke="#f59e0b" stroke-width="2" stroke-dasharray="3,2"/>`);
+      cx += w;
+    });
+    svgParts.push(`<line x1="${x0}" y1="${y-28}" x2="${x0+totalW}" y2="${y-28}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${x0}" y1="${y-32}" x2="${x0}" y2="${y-24}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${x0+totalW}" y1="${y-32}" x2="${x0+totalW}" y2="${y-24}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<text x="${x0+totalW/2}" y="${y-34}" text-anchor="middle" font-size="${FONT}" fill="#888">${sides[0].inputLength}mm</text>`);
+    return `<div class="install-diagram"><svg viewBox="0 0 ${svgW} ${svgH}" width="${Math.min(svgW,500)}" xmlns="http://www.w3.org/2000/svg">${svgParts.join('')}</svg>${buildLegend(usedColors,corners,cornerSize)}</div>`;
+  } else if (currentShape === 'l-shape') {
+    const hLen = sides[0].inputLength*scale, vLen = sides[1].inputLength*scale, cs = CORNER_BOX;
+    const svgW = hLen+PAD*2, svgH = vLen+PAD*2, originX = PAD, originY = PAD;
+    const cornerY = originY+vLen-cs;
+    svgParts.push(`<rect x="${originX}" y="${cornerY}" width="${cs}" height="${cs}" rx="3" fill="#f59e0b" stroke="#d97706" stroke-width="1.5"/>`);
+    let cy = cornerY;
+    (sideSegments[sides[1].label]||[]).forEach((seg,i,arr) => {
+      const h = seg.length*scale, k = seg.sideLabel+'_'+seg.length, color = segColorMap[k];
+      usedColors[k] = { color, label: `${seg.sideLabel} ${seg.length}mm` };
+      svgParts.push(`<rect x="${originX+cs/2-RAIL_THICK/2}" y="${cy-h}" width="${RAIL_THICK}" height="${h}" rx="3" fill="${color}"/>`);
+      svgParts.push(`<text x="${originX+cs/2-RAIL_THICK/2-8}" y="${cy-h/2+4}" text-anchor="end" font-size="${FONT}" font-weight="600" fill="${color}">${seg.length}mm</text>`);
+      if (i<arr.length-1) svgParts.push(`<line x1="${originX+cs/2-8}" y1="${cy-h}" x2="${originX+cs/2+8}" y2="${cy-h}" stroke="#f59e0b" stroke-width="2" stroke-dasharray="3,2"/>`);
+      cy -= h;
+    });
+    let cx = originX+cs;
+    (sideSegments[sides[0].label]||[]).forEach((seg,i,arr) => {
+      const w = seg.length*scale, k = seg.sideLabel+'_'+seg.length, color = segColorMap[k];
+      usedColors[k] = { color, label: `${seg.sideLabel} ${seg.length}mm` };
+      svgParts.push(`<rect x="${cx}" y="${cornerY+cs/2-RAIL_THICK/2}" width="${w}" height="${RAIL_THICK}" rx="3" fill="${color}"/>`);
+      svgParts.push(`<text x="${cx+w/2}" y="${cornerY+cs/2+RAIL_THICK/2+16}" text-anchor="middle" font-size="${FONT}" font-weight="600" fill="${color}">${seg.length}mm</text>`);
+      if (i<arr.length-1) svgParts.push(`<line x1="${cx+w}" y1="${cornerY+cs/2-8}" x2="${cx+w}" y2="${cornerY+cs/2+8}" stroke="#f59e0b" stroke-width="2" stroke-dasharray="3,2"/>`);
+      cx += w;
+    });
+    const dimY = cornerY+cs+DIM_GAP;
+    svgParts.push(`<line x1="${originX}" y1="${dimY}" x2="${originX+hLen}" y2="${dimY}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${originX}" y1="${dimY-4}" x2="${originX}" y2="${dimY+4}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${originX+hLen}" y1="${dimY-4}" x2="${originX+hLen}" y2="${dimY+4}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<text x="${originX+hLen/2}" y="${dimY+16}" text-anchor="middle" font-size="${FONT}" fill="#888">가로 ${sides[0].inputLength}mm</text>`);
+    const dimX = originX+cs/2+RAIL_THICK/2+DIM_GAP+30;
+    svgParts.push(`<line x1="${dimX}" y1="${originY}" x2="${dimX}" y2="${originY+vLen}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${dimX-4}" y1="${originY}" x2="${dimX+4}" y2="${originY}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${dimX-4}" y1="${originY+vLen}" x2="${dimX+4}" y2="${originY+vLen}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<text x="${dimX+6}" y="${originY+vLen/2+4}" text-anchor="start" font-size="${FONT}" fill="#888" transform="rotate(-90 ${dimX+6} ${originY+vLen/2+4})">세로 ${sides[1].inputLength}mm</text>`);
+    return `<div class="install-diagram"><svg viewBox="0 0 ${svgW+40} ${svgH+30}" width="${Math.min(svgW+40,500)}" xmlns="http://www.w3.org/2000/svg">${svgParts.join('')}</svg>${buildLegend(usedColors,corners,cornerSize)}</div>`;
+  } else {
+    const hLen = sides[0].inputLength*scale, vLen = sides[1].inputLength*scale, cs = CORNER_BOX;
+    const svgW = hLen+PAD*2+40, svgH = vLen+PAD*2+30, ox = PAD, oy = PAD;
+    [{x:ox,y:oy},{x:ox+hLen-cs,y:oy},{x:ox+hLen-cs,y:oy+vLen-cs},{x:ox,y:oy+vLen-cs}].forEach(cp => {
+      svgParts.push(`<rect x="${cp.x}" y="${cp.y}" width="${cs}" height="${cs}" rx="3" fill="#f59e0b" stroke="#d97706" stroke-width="1.5"/>`);
+    });
+    const drawH = (segs, y, labelAbove) => {
+      let cx=ox+cs;
+      segs.forEach(seg=>{
+        const w=seg.length*scale,k=seg.sideLabel+'_'+seg.length,color=segColorMap[k];
+        usedColors[k]={color,label:`${seg.sideLabel} ${seg.length}mm`};
+        svgParts.push(`<rect x="${cx}" y="${y-RAIL_THICK/2}" width="${w}" height="${RAIL_THICK}" rx="3" fill="${color}"/>`);
+        svgParts.push(`<text x="${cx+w/2}" y="${labelAbove?y-RAIL_THICK/2-8:y+RAIL_THICK/2+14}" text-anchor="middle" font-size="${FONT-1}" font-weight="600" fill="${color}">${seg.length}mm</text>`);
+        cx+=w;
+      });
+    };
+    const drawV = (segs, x, labelLeft) => {
+      let cy=oy+cs;
+      segs.forEach(seg=>{
+        const h=seg.length*scale,k=seg.sideLabel+'_'+seg.length,color=segColorMap[k];
+        usedColors[k]={color,label:`${seg.sideLabel} ${seg.length}mm`};
+        svgParts.push(`<rect x="${x-RAIL_THICK/2}" y="${cy}" width="${RAIL_THICK}" height="${h}" rx="3" fill="${color}"/>`);
+        svgParts.push(`<text x="${labelLeft?x-RAIL_THICK/2-8:x+RAIL_THICK/2+8}" y="${cy+h/2+4}" text-anchor="${labelLeft?'end':'start'}" font-size="${FONT-1}" font-weight="600" fill="${color}">${seg.length}mm</text>`);
+        cy+=h;
+      });
+    };
+    drawH(sideSegments['가로①']||[], oy+cs/2, true);
+    drawH(sideSegments['가로②']||[], oy+vLen-cs/2, false);
+    drawV(sideSegments['세로①']||[], ox+hLen-cs/2, false);
+    drawV(sideSegments['세로②']||[], ox+cs/2, true);
+    const dtY=oy-DIM_GAP;
+    svgParts.push(`<line x1="${ox}" y1="${dtY}" x2="${ox+hLen}" y2="${dtY}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${ox}" y1="${dtY-4}" x2="${ox}" y2="${dtY+4}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${ox+hLen}" y1="${dtY-4}" x2="${ox+hLen}" y2="${dtY+4}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<text x="${ox+hLen/2}" y="${dtY-6}" text-anchor="middle" font-size="${FONT}" fill="#888">가로 ${sides[0].inputLength}mm</text>`);
+    const drX=ox+hLen+DIM_GAP+20;
+    svgParts.push(`<line x1="${drX}" y1="${oy}" x2="${drX}" y2="${oy+vLen}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${drX-4}" y1="${oy}" x2="${drX+4}" y2="${oy}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<line x1="${drX-4}" y1="${oy+vLen}" x2="${drX+4}" y2="${oy+vLen}" stroke="#bbb" stroke-width="1"/>`);
+    svgParts.push(`<text x="${drX+6}" y="${oy+vLen/2+4}" text-anchor="start" font-size="${FONT}" fill="#888" transform="rotate(-90 ${drX+6} ${oy+vLen/2+4})">세로 ${sides[1].inputLength}mm</text>`);
+    return `<div class="install-diagram"><svg viewBox="0 0 ${svgW} ${svgH}" width="${Math.min(svgW,500)}" xmlns="http://www.w3.org/2000/svg">${svgParts.join('')}</svg>${buildLegend(usedColors,corners,cornerSize)}</div>`;
+  }
+}
+function buildLegend(usedColors, corners, cornerSize) {
+  let items = '';
+  Object.values(usedColors).forEach(({color,label}) => {
+    items += `<div class="legend-item"><div class="legend-swatch" style="background:${color}"></div>${label}</div>`;
+  });
+  if (corners > 0) items += `<div class="legend-item"><div class="legend-swatch" style="background:#f59e0b;border:1px solid #d97706"></div>연결부속 (${cornerSize}mm)</div>`;
+  return `<div class="diagram-legend">${items}</div>`;
+}
+function renderPowerSupply(totalMeters) {
+  let capacity, count = 1, desc;
+  if (totalMeters <= 4) { capacity = '100W'; desc = `총 레일 길이 ${totalMeters.toFixed(1)}m (4m 이하)`; }
+  else if (totalMeters <= 12) { capacity = '200W'; desc = `총 레일 길이 ${totalMeters.toFixed(1)}m (4~12m)`; }
+  else { capacity = '300W'; desc = `총 레일 길이 ${totalMeters.toFixed(1)}m (12m 초과)`; }
+  const bolt = `<svg viewBox="0 0 24 24" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+  let h = '<div class="power-card"><div class="result-card-title">권장 안정기 (48V)</div>';
+  h += `<div class="power-recommend"><div class="power-icon">${bolt}</div><div class="power-info"><div class="power-info-capacity">${capacity}</div><div class="power-info-desc">${desc}</div></div><div class="power-info-count">${count}개</div></div>`;
+  h += `<div class="result-item" style="padding-top:8px"><span class="result-item-name">설치 위치</span><span class="result-item-value">레일 전원 입력부 인근</span></div>`;
+  h += `<div class="power-note">* 안정기는 레일에서 가장 가까운 은폐 가능한 공간(천장 내부, 가구 뒤 등)에 설치하세요.</div></div>`;
+  return h;
+}
+// ─── Main calculation ───
+function calculate() {
+  const { v1, v2 } = getInputs();
+  const resultsDiv = document.getElementById('results');
+  const CORNER_SIZE = getCornerSize();
+  const railSizes = getRailSizes();
+  const largest = railSizes[0];
+  if (currentShape === 'straight') {
+    if (!v1 || v1 <= 0) return showError('길이를 입력해 주세요.');
+  } else {
+    if (!v1 || v1 <= 0 || !v2 || v2 <= 0) return showError('가로와 세로 길이를 모두 입력해 주세요.');
+  }
+  let sides = [], corners = 0;
+  if (currentShape === 'straight') {
+    sides.push({ label: '레일', inputLength: v1, effectiveLength: v1, group: 'straight' });
+  } else if (currentShape === 'l-shape') {
+    corners = 1;
+    sides.push({ label: '가로', inputLength: v1, effectiveLength: v1 - CORNER_SIZE, group: '가로' });
+    sides.push({ label: '세로', inputLength: v2, effectiveLength: v2 - CORNER_SIZE, group: '세로' });
+  } else {
+    corners = 4;
+    sides.push({ label: '가로①', inputLength: v1, effectiveLength: v1 - CORNER_SIZE*2, group: '가로' });
+    sides.push({ label: '세로①', inputLength: v2, effectiveLength: v2 - CORNER_SIZE*2, group: '세로' });
+    sides.push({ label: '가로②', inputLength: v1, effectiveLength: v1 - CORNER_SIZE*2, group: '가로' });
+    sides.push({ label: '세로②', inputLength: v2, effectiveLength: v2 - CORNER_SIZE*2, group: '세로' });
+  }
+  for (const side of sides) {
+    if (side.effectiveLength <= 0) return showError(`${side.label}의 길이가 너무 짧습니다. 연결부속(${CORNER_SIZE}mm) 공간이 확보되지 않습니다.`);
+  }
+  // ─── Split sides into segments (generalized for any rail sizes) ───
+  let allSegments = [];
+  let straightConnections = 0;
+  for (const side of sides) {
+    const eff = side.effectiveLength;
+    if (eff <= largest) {
+      // Fits in a single rail — find smallest fitting rail
+      const chosenRail = findSmallestFittingRail(eff, railSizes);
+      allSegments.push({ sideLabel: side.label, group: side.group, length: eff, product: railLabel(chosenRail), productSize: chosenRail, isFullRail: eff === chosenRail });
+    } else {
+      // Needs multiple rails: fill with largest, then handle remainder
+      const fullCount = Math.floor(eff / largest);
+      const remainder = eff - (fullCount * largest);
+      for (let i = 0; i < fullCount; i++) {
+        allSegments.push({ sideLabel: side.label, group: side.group, length: largest, product: railLabel(largest), productSize: largest, isFullRail: true });
+      }
+      if (remainder > 0) {
+        const chosenRail = findSmallestFittingRail(remainder, railSizes);
+        allSegments.push({ sideLabel: side.label, group: side.group, length: remainder, product: railLabel(chosenRail), productSize: chosenRail, isFullRail: remainder === chosenRail });
+      }
+      const totalPieces = fullCount + (remainder > 0 ? 1 : 0);
+      straightConnections += totalPieces - 1;
+    }
+  }
+  // ─── Bin packing (separate pools per rail size) ───
+  let bins = [];
+  // Full rails → own bin
+  const fullSegs = allSegments.filter(s => s.isFullRail);
+  fullSegs.forEach(seg => {
+    bins.push({ product: seg.product, productSize: seg.productSize, remaining: 0, segments: [seg], isFullRail: true, group: seg.group });
+  });
+  // Cut pieces → pack by product (rail) size using FFD
+  const cutSegs = allSegments.filter(s => !s.isFullRail);
+  const cutBySize = {};
+  cutSegs.forEach(seg => { if (!cutBySize[seg.productSize]) cutBySize[seg.productSize] = []; cutBySize[seg.productSize].push(seg); });
+  for (const [sizeStr, segs] of Object.entries(cutBySize)) {
+    const size = parseInt(sizeStr);
+    const sorted = segs.sort((a, b) => b.length - a.length);
+    let sizeBins = [];
+    sorted.forEach(seg => {
+      let placed = false;
+      for (const bin of sizeBins) {
+        if (bin.remaining >= seg.length) { bin.segments.push(seg); bin.remaining -= seg.length; placed = true; break; }
+      }
+      if (!placed) {
+        sizeBins.push({ product: railLabel(size), productSize: size, remaining: size - seg.length, segments: [seg], isFullRail: false, group: seg.group });
+      }
+    });
+    bins = bins.concat(sizeBins);
+  }
+  // Update group for mixed bins
+  bins.forEach(bin => {
+    const groups = [...new Set(bin.segments.map(s => s.group))];
+    bin.group = groups.length === 1 ? groups[0] : 'mixed';
+  });
+  // Sort bins: 가로(full→cut) → 세로(full→cut) → straight → mixed
+  const groupOrder = { '가로': 0, 'straight': 1, '세로': 2, 'mixed': 3 };
+  bins.sort((a, b) => {
+    const ga = groupOrder[a.group] ?? 1, gb = groupOrder[b.group] ?? 1;
+    if (ga !== gb) return ga - gb;
+    if (a.isFullRail !== b.isFullRail) return a.isFullRail ? -1 : 1;
+    return 0;
+  });
+  // ─── Count products ───
+  const count3M = bins.filter(b => b.productSize === 3000).length;
+  const count2M = bins.filter(b => b.productSize === 2000).length;
+  const count1M = bins.filter(b => b.productSize === 1000).length;
+  // Accessories
+  const cornerConnectors = corners;
+  const cornerPowerLines = currentShape === 'square' ? corners - 1 : corners;
+  const straightPowerLines = straightConnections;
+  const basePowerInput = 1; // 모든 형상에서 전원입력선 1개 필요
+  // ═══════ RENDER ═══════
+  let html = '<div class="results-title">계산 결과</div>';
+  // Selected options info
+  const productLabel = currentProduct + ' Magnetic';
+  const locationLabel = currentLocation;
+  const shapeLabel = currentShape === 'straight' ? '일(ㅡ)자' : currentShape === 'l-shape' ? 'ㄱ자' : 'ㅁ자';
+  html += `<div class="selected-info-wrap"><span class="selected-info">${productLabel} · ${locationLabel} · ${shapeLabel}</span></div>`;
+  // Diagram
+  html += renderInstallationDiagram(sides, corners, allSegments, CORNER_SIZE);
+  // Rail summary
+  html += '<div class="result-card"><div class="result-card-title">레일 구매 목록</div>';
+  if (count3M > 0) html += `<div class="result-item"><span class="result-item-name">3M 레일</span><span class="result-item-value">${count3M}개</span></div>`;
+  if (count2M > 0) html += `<div class="result-item"><span class="result-item-name">2M 레일</span><span class="result-item-value">${count2M}개</span></div>`;
+  if (count1M > 0) html += `<div class="result-item"><span class="result-item-name">1M 레일</span><span class="result-item-value">${count1M}개</span></div>`;
+  html += '</div>';
+  // Cut plan
+  html += '<div class="result-card"><div class="result-card-title">레일 절단 계획</div><div class="cut-list">';
+  let prevGroup = null, railNum = 0;
+  const groupLabels = { '가로': '가로 레일', '세로': '세로 레일', 'straight': '', 'mixed': '기타' };
+  bins.forEach(bin => {
+    if (currentShape !== 'straight' && bin.group !== prevGroup) {
+      const gl = groupLabels[bin.group] || bin.group;
+      if (gl) html += `<div class="cut-group-label">${gl}</div>`;
+      prevGroup = bin.group;
+    }
+    railNum++;
+    const noCut = bin.isFullRail ? '<span class="no-cut-tag">재단 불필요</span>' : '';
+    const pClass = railCssClass(bin.productSize);
+    html += `<div class="cut-row"><span class="cut-row-label">${railNum}</span><span class="cut-row-product ${pClass}">${bin.product}</span>`;
+    html += '<div class="cut-segments">';
+    bin.segments.forEach(seg => { html += `<span class="cut-seg">${seg.length}mm (${seg.sideLabel})</span>`; });
+    if (bin.remaining > 0) html += `<span class="cut-seg waste">잔여 ${bin.remaining}mm</span>`;
+    html += `</div>${noCut}</div>`;
+  });
+  html += '</div></div>';
+  // Accessories
+  html += '<div class="result-card"><div class="result-card-title">부속품 목록</div>';
+  if (cornerConnectors > 0) {
+    html += `<div class="result-item"><span class="result-item-name">ㄱ자 연결부속 (${currentLocation})</span><span class="result-item-value">${cornerConnectors}개</span></div>`;
+    html += `<div class="result-item"><span class="result-item-name">코너 전원연결선</span><span class="result-item-value">${cornerPowerLines}개</span></div>`;
+  }
+  if (straightPowerLines > 0) html += `<div class="result-item"><span class="result-item-name">일자 전원입력선 (직선 연결용)</span><span class="result-item-value">${straightPowerLines}개</span></div>`;
+  html += `<div class="result-item"><span class="result-item-name">전원입력선 (전원 공급용)</span><span class="result-item-value">${basePowerInput}개</span></div>`;
+  html += '</div>';
+  // Side breakdown
+  html += '<div class="result-card"><div class="result-card-title">변별 상세</div>';
+  sides.forEach(side => {
+    html += `<div class="result-item"><span class="result-item-name">${side.label}</span><span class="result-item-value">입력 ${side.inputLength}mm → 실제 레일 ${side.effectiveLength}mm</span></div>`;
+  });
+  if (corners > 0) html += `<div class="cut-detail">* 연결부속(${CORNER_SIZE}mm)이 차지하는 공간이 각 변에서 차감되었습니다.</div>`;
+  html += '</div>';
+  // Power supply
+  const totalRailMm = allSegments.reduce((sum, s) => sum + s.length, 0);
+  html += renderPowerSupply(totalRailMm / 1000);
+  // Memo
+  html += `<div class="memo-card"><div class="result-card-title">메모</div><textarea class="memo-textarea" id="memoArea" placeholder="시공 관련 메모를 자유롭게 작성하세요..."></textarea></div>`;
+  // Export bar
+  const iconDownload = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+  const iconImage = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+  html += `<div class="export-bar">
+    <button class="export-btn" onclick="exportImage()">${iconImage}<span>이미지 저장</span></button>
+    <button class="export-btn" onclick="exportText()">${iconDownload}<span>텍스트 내보내기</span></button>
+  </div>`;
+  resultsDiv.innerHTML = html;
+  resultsDiv.style.display = 'block';
+  resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function showError(msg) {
+  const r = document.getElementById('results');
+  r.innerHTML = `<div class="error-msg">${msg}</div>`;
+  r.style.display = 'block';
+}
+// ─── Export: Image (snapDOM) ───
+let snapdomLoaded = false;
+function exportImage() {
+  const target = document.getElementById('calculatorRoot');
+  if (!snapdomLoaded) {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@latest/dist/snapdom.min.js';
+    s.onload = () => { snapdomLoaded = true; captureImage(target); };
+    s.onerror = () => alert('이미지 저장 라이브러리를 불러올 수 없습니다. 네트워크를 확인해 주세요.');
+    document.head.appendChild(s);
+  } else {
+    captureImage(target);
+  }
+}
+async function captureImage(target) {
+  const bar = target.querySelector('.export-bar');
+  if (bar) bar.style.display = 'none';
+  try {
+    const result = await snapdom(target, { scale: 2 });
+    await result.download({ format: 'png', filename: 'rail-calculator' });
+  } catch (e) {
+    console.error('snapdom error:', e);
+    alert('이미지 저장에 실패했습니다.');
+  } finally {
+    if (bar) bar.style.display = '';
+  }
+}
+// ─── Export: Text ───
+function exportText() {
+  const results = document.getElementById('results');
+  if (!results || results.style.display === 'none') return;
+  const productLabel = currentProduct + ' Magnetic';
+  let lines = [`═══ Rail Calculator 결과 ═══`, `제품: ${productLabel} / 설치 위치: ${currentLocation}`, ''];
+  results.querySelectorAll('.result-card, .power-card, .memo-card').forEach(card => {
+    const title = card.querySelector('.result-card-title');
+    if (title) lines.push(`▸ ${title.textContent.trim()}`);
+    card.querySelectorAll('.result-item').forEach(item => {
+      const name = item.querySelector('.result-item-name')?.textContent.trim() || '';
+      const val = item.querySelector('.result-item-value')?.textContent.trim() || '';
+      lines.push(`   ${name}: ${val}`);
+    });
+    const cap = card.querySelector('.power-info-capacity');
+    const desc = card.querySelector('.power-info-desc');
+    const cnt = card.querySelector('.power-info-count');
+    if (cap) lines.push(`   ${cap.textContent.trim()} × ${cnt?.textContent.trim()} — ${desc?.textContent.trim()}`);
+    card.querySelectorAll('.cut-group-label').forEach(gl => lines.push(`   [${gl.textContent.trim()}]`));
+    card.querySelectorAll('.cut-row').forEach(row => {
+      const segs = [...row.querySelectorAll('.cut-seg')].map(s => s.textContent.trim()).join(' + ');
+      const prod = row.querySelector('.cut-row-product')?.textContent.trim() || '';
+      const noCut = row.querySelector('.no-cut-tag') ? ' (재단 불필요)' : '';
+      lines.push(`   ${prod} → ${segs}${noCut}`);
+    });
+    const detail = card.querySelector('.cut-detail');
+    if (detail) lines.push(`   ${detail.textContent.trim()}`);
+    const note = card.querySelector('.power-note');
+    if (note) lines.push(`   ${note.textContent.trim()}`);
+    const memo = card.querySelector('.memo-textarea');
+    if (memo && memo.value.trim()) lines.push(`   ${memo.value.trim()}`);
+    lines.push('');
+  });
+  const text = lines.join('\n');
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const link = document.createElement('a');
+  link.download = 'rail-calculator.txt';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+// Init
+renderInputs();
+renderDiagram();
+updateNotes();
+</script>
+</body>
+</html>
