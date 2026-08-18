@@ -17,6 +17,14 @@
 
 window.TOOLS = [
   {
+    name: "발주 시스템",
+    description: "제품별 수량만 입력하면 발주서 엑셀을 자동 생성하는 발주 프로그램 (공장별 탭·발주 기록 저장).",
+    path: "tools/order-system/",
+    tags: ["발주", "구매", "엑셀", "제품"],
+    owner: "KANT",
+    updated: "2026-07-28",
+  },
+  {
     name: "융스위치 단가",
     description: "색상·구 수·기능 모듈을 조합하면 단가를 자동 계산해 주는 툴입니다.",
     path: "tools/jung-switch/",
