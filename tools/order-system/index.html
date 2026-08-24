@@ -120,9 +120,8 @@
 <div class="wrap">
   <div class="tabs" id="tabs"></div>
   <div class="infobar">
-    <div class="field"><label>현장 / 프로젝트 (파일명)</label><input type="text" id="project" placeholder="예: 아이론"></div>
     <div class="field"><label>발주일자</label><input type="date" id="orderDate"></div>
-    <div class="field"><label>공급처 (○○ 귀하)</label><input type="text" id="supplier" placeholder="예: 인하이"></div>
+    <div class="field"><label>공급처 (○○ 귀하 · 파일명)</label><input type="text" id="supplier" placeholder="예: 인하이"></div>
     <div class="field"><label>담당자</label><input type="text" id="manager" placeholder="이름"></div>
     <div class="field grow"><label>비고 / 메모</label><input type="text" id="memo" placeholder="배송 요청, 특이사항 등"></div>
   </div>
@@ -137,7 +136,7 @@
       <div id="previewBody" style="max-height:52vh;overflow:auto"></div>
       <div class="pvfoot">
         <div class="totrow"><span id="totQty">총 0개</span></div>
-        <div class="bookrow"><span id="bookInfo" class="gcount">이번 달 첫 발주</span><span class="bookbtns"><button class="btn ghost sm" id="btnManage">발주 목록 관리</button><button class="btn ghost sm" id="btnNewBook">월 파일 새로 시작</button></span></div>
+        <div class="bookrow"><span id="bookInfo" class="gcount">이번 달 첫 발주</span><span class="bookbtns"><button class="btn ghost sm" id="btnManage">발주 목록 관리</button><button class="btn ghost sm" id="btnNewBook">이 달 비우기</button></span></div>
         <div class="actions">
           <button class="btn ghost" id="btnClear">초기화</button>
           <button class="btn" id="btnCopy">표 복사</button>
@@ -152,16 +151,19 @@
   <div class="modal">
     <div class="mhead"><h3>발주 목록 관리</h3><button class="x" id="mgrClose">&times;</button></div>
     <div class="mbar">
-      <label style="font-size:12px;color:var(--muted)">파일(월)</label>
-      <select id="mgrBucket"></select>
+      <span id="mgrBucketWrap" style="display:flex;align-items:center;gap:8px"><label style="font-size:12px;color:var(--muted)">파일(월)</label><select id="mgrBucket"></select></span>
       <span id="mgrSum" class="gcount" style="margin-left:auto"></span>
     </div>
     <div class="mbody"><div id="mgrList"></div></div>
     <div class="mfoot">
+      <button class="btn ghost sm" id="mgrImport">기존 엑셀 불러오기</button>
+      <button class="btn ghost sm" id="mgrTrash">휴지통</button>
+      <span style="flex:1"></span>
       <button class="btn ghost sm" id="mgrDownload">이 파일 다시 다운로드</button>
       <button class="btn sm" id="mgrDone">닫기</button>
     </div>
   </div>
+  <input type="file" id="mgrFile" accept=".xlsx" multiple style="display:none">
 </div>
 <div class="toast" id="toast"></div>
 <script>
@@ -194,7 +196,7 @@ const CHEX={"블랙":"#1c1c1e","화이트":"#f3f4f6","니켈":"#b9bec9","오렌�
 function chex(name){if(!name)return "#e5e7eb";if(CHEX[name])return CHEX[name];const first=name.split("+")[0].trim();return CHEX[first]||"#dfe3ea";}
 function swatchHtml(name){if(name&&name.indexOf("+")>=0){const p=name.split("+");return `<span class="swatch" style="background:linear-gradient(135deg,${chex(p[0])} 50%,${chex(p[1])} 50%)"></span>`;}return `<span class="swatch" style="background:${chex(name)}"></span>`;}
 
-function renderTabs(){const t=$("#tabs");t.innerHTML="";Object.keys(CATALOG).forEach(fk=>{const b=document.createElement("div");b.className="tab"+(fk===state.factory?" active":"");b.textContent=CATALOG[fk].label;b.onclick=()=>{state.factory=fk;state.catFilter="all";state.color="all";syncSupplier();render();};t.appendChild(b);});}
+function renderTabs(){const t=$("#tabs");t.innerHTML="";Object.keys(CATALOG).forEach(fk=>{const b=document.createElement("div");b.className="tab"+(fk===state.factory?" active":"");b.textContent=CATALOG[fk].label;b.onclick=()=>{state.factory=fk;state.catFilter="all";state.color="all";syncSupplier();render();updateBookInfo();};t.appendChild(b);});}
 function renderChips(){const w=$("#chips");w.innerHTML="";const cats=CATALOG[state.factory].sections.map(s=>s.cat);const mk=(k,l)=>{const c=document.createElement("div");c.className="chip"+(state.catFilter===k?" on":"");c.textContent=l;c.onclick=()=>{state.catFilter=k;state.color="all";render();};return c;};w.appendChild(mk("all","전체"));cats.forEach(c=>w.appendChild(mk(c,c)));}
 function renderColorTabs(){const el=$("#colorTabs");if(!el)return;if(!isMagCat(state.catFilter)){el.style.display="none";el.innerHTML="";return;}const sec=CATALOG[state.factory].sections.find(s=>s.cat===state.catFilter);if(!sec){el.style.display="none";return;}const cols=[];sec.groups.forEach(g=>COLORS.forEach(c=>{if(g.name.indexOf(c)>=0&&cols.indexOf(c)<0)cols.push(c);}));if(!cols.length){el.style.display="none";el.innerHTML="";return;}el.style.display="flex";el.innerHTML="";const lab=document.createElement("span");lab.textContent="색상";lab.style.cssText="font-size:11px;color:#9ca3af;align-self:center;margin-right:2px;font-weight:700";el.appendChild(lab);const mk=(k,l)=>{const d=document.createElement("div");d.className="chip"+(state.color===k?" on":"");if(state.color===k){d.style.background="var(--amber)";d.style.borderColor="var(--amber2)";d.style.color="#3a2600";}d.textContent=l;d.onclick=()=>{state.color=k;render();};return d;};el.appendChild(mk("all","전체"));cols.forEach(c=>el.appendChild(mk(c,c)));}
 
@@ -292,14 +294,21 @@ const BOOK_KEY="kant_book_v1";
 function loadBook(){try{return JSON.parse(localStorage.getItem(BOOK_KEY)||"{}")||{};}catch(e){return {};}}
 function saveBook(b){try{localStorage.setItem(BOOK_KEY,JSON.stringify(b));return true;}catch(e){console.error(e);return false;}}
 function ymOf(date){const m=/^(\d{4})-(\d{2})/.exec(date||"");if(m)return m[1]+"-"+m[2];const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
-function projOf(){return ($("#project").value||"아이론").trim()||"아이론";}
-function bucketKey(project,ym){return project+"|"+ym;}
-function currentKey(){return bucketKey(projOf(),ymOf($("#orderDate").value||""));}
+function supplierOf(){return ($("#supplier").value||CATALOG[state.factory].label).trim()||CATALOG[state.factory].label;}
+function bucketKey(supplier,ym){return supplier+"|"+ym;}
+function currentKey(){return bucketKey(supplierOf(),ymOf($("#orderDate").value||""));}
 function sheetNameFor(existing,date){let base;const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(date||"");if(m)base=parseInt(m[2],10)+"월"+parseInt(m[3],10)+"일";else base=(date||"발주").replace(/[:\\\/?*\[\]]/g,"");base=base.slice(0,28);let name=base,n=2;while(existing.indexOf(name)>=0){name=base+"("+n+")";n++;}return name;}
 function monthOf(ym){return parseInt(ym.split("-")[1],10);}
-function bookFilename(project,ym){return`칸트_${project}_${monthOf(ym)}월발주.xlsx`;}
-function updateBookInfo(){const el=$("#bookInfo");if(!el)return;const key=currentKey(),book=loadBook();const b=book[key];const n=(b&&b.orders.length)||0;const ym=ymOf($("#orderDate").value||"");el.textContent=n?`이번 달 파일: 칸트_${projOf()}_${monthOf(ym)}월발주 · 누적 ${n}건`:`이번 달 첫 발주 · 칸트_${projOf()}_${monthOf(ym)}월발주`;}
-function resetMonthBook(){const key=currentKey(),book=loadBook();const b=book[key];if(!b||!b.orders.length){toast("이번 달 저장된 발주가 없습니다");return;}if(confirm(`이번 달(${key.split("|")[1]}) 누적 발주 ${b.orders.length}건을 비우고 새 파일로 시작할까요?\n(이미 다운로드한 엑셀 파일은 그대로 남아 있습니다)`)){delete book[key];saveBook(book);updateBookInfo();toast("새 월 파일로 초기화했습니다");}}
+function bookFilename(supplier,ym){return`칸트_${supplier}_${monthOf(ym)}월발주.xlsx`;}
+function updateBookInfo(){const el=$("#bookInfo");if(!el)return;const key=currentKey(),book=loadBook();const b=book[key];const n=(b&&b.orders.length)||0;const ym=ymOf($("#orderDate").value||"");el.textContent=n?`이번 달 파일: 칸트_${supplierOf()}_${monthOf(ym)}월발주 · 누적 ${n}건`:`이번 달 첫 발주 · 칸트_${supplierOf()}_${monthOf(ym)}월발주`;}
+/* ── 휴지통(복원 가능) ─────────────────────────────────────────── */
+const TRASH_KEY="kant_trash_v1",TRASH_MAX=100;
+function loadTrash(){try{return JSON.parse(localStorage.getItem(TRASH_KEY)||"[]")||[];}catch(e){return [];}}
+function saveTrash(t){try{localStorage.setItem(TRASH_KEY,JSON.stringify(t.slice(0,TRASH_MAX)));return true;}catch(e){console.error(e);return false;}}
+function nowStamp(){const d=new Date();const p=n=>String(n).padStart(2,"0");return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
+function trashPush(entry){const t=loadTrash();entry.ts=nowStamp();entry.id="t"+Date.now()+Math.floor(Math.random()*1000);t.unshift(entry);saveTrash(t);}
+
+function resetMonthBook(){const key=currentKey(),book=loadBook();const b=book[key];if(!b||!b.orders.length){toast("이번 달 저장된 발주가 없습니다");return;}if(confirm(`이번 달(${key.split("|")[1]}) 누적 발주 ${b.orders.length}건을 휴지통으로 비우고 새로 시작할까요?\n\n· 이미 다운로드한 엑셀 파일은 그대로 남습니다.\n· 실수로 눌러도 [발주 목록 관리 → 휴지통]에서 다시 복원할 수 있습니다.`)){trashPush({kind:"bucket",key,supplier:b.supplier||b.project||supplierOf(),ym:b.ym||key.split("|")[1],orders:b.orders});delete book[key];saveBook(book);updateBookInfo();if($("#mgr")&&$("#mgr").classList.contains("show"))openManager();toast("휴지통으로 보냈습니다 · 복원 가능");}}
 
 /* 발주 1건을 워크시트 1개로 그린다 */
 async function buildSheet(wb,sheetName,ord){
@@ -329,16 +338,16 @@ async function downloadExcel(){
   if(typeof ExcelJS==="undefined"){toast("엑셀 모듈 로드 실패 — 인터넷 확인 후 재시도하거나 '표 복사' 이용");return;}
   try{
     const date=$("#orderDate").value||"";const supplier=($("#supplier").value||CATALOG[state.factory].label).trim();const manager=$("#manager").value||"";const memo=$("#memo").value||"";
-    const project=projOf(),ym=ymOf(date),key=bucketKey(project,ym);
+    const ym=ymOf(date),key=bucketKey(supplier,ym);
     // 이번 발주 1건 구성 (품목별 이미지 원본을 함께 저장)
     const ord={date,supplier,manager,memo,items:sel.map(s=>({name:fullName(s.o),qty:s.qty,note:s.note||"",img:oImg(s.o)}))};
-    // 이번 달 묶음에 시트로 추가
-    const book=loadBook();const bucket=book[key]||(book[key]={project,ym,orders:[]});
+    // 이번 달 묶음에 시트로 추가 (공급처 기준)
+    const book=loadBook();const bucket=book[key]||(book[key]={supplier,ym,orders:[]});
     ord.sheet=sheetNameFor(bucket.orders.map(o=>o.sheet),date);
     bucket.orders.push(ord);
     const stored=saveBook(book);
     // 이번 달 전체를 하나의 파일로 다시 생성 (발주 1건 = 시트 1개)
-    const blob=await buildWorkbookBlob(bucket.orders);const fname=bookFilename(project,ym);
+    const blob=await buildWorkbookBlob(bucket.orders);const fname=bookFilename(supplier,ym);
     triggerDownload(blob,fname);
     const saved=await saveOrder(sel,{date,supplier,manager,memo});
     updateBookInfo();
@@ -348,18 +357,54 @@ async function downloadExcel(){
 }
 
 /* ── 발주 목록 관리(삭제/재다운로드) ───────────────────────────── */
-function bucketLabel(key,b){const ym=key.split("|")[1]||b.ym;return`칸트_${b.project}_${monthOf(ym)}월발주  (${ym} · ${b.orders.length}건)`;}
-function openManager(){const book=loadBook();const keys=Object.keys(book).filter(k=>book[k]&&book[k].orders&&book[k].orders.length).sort().reverse();const sel=$("#mgrBucket");sel.innerHTML="";if(!keys.length){sel.innerHTML='<option value="">저장된 발주 없음</option>';}else{const cur=currentKey();const start=keys.indexOf(cur)>=0?cur:keys[0];keys.forEach(k=>{const o=document.createElement("option");o.value=k;o.textContent=bucketLabel(k,book[k]);if(k===start)o.selected=true;sel.appendChild(o);});}sel.onchange=renderMgrList;renderMgrList();$("#mgr").classList.add("show");}
+function bucketLabel(key,b){const ym=key.split("|")[1]||b.ym;const sup=b.supplier||b.project||"";return`칸트_${sup}_${monthOf(ym)}월발주  (${ym} · ${b.orders.length}건)`;}
+let mgrView="orders";
+function openManager(){mgrView="orders";$("#mgrTrash").textContent="휴지통";const book=loadBook();const keys=Object.keys(book).filter(k=>book[k]&&book[k].orders&&book[k].orders.length).sort().reverse();const sel=$("#mgrBucket");sel.innerHTML="";if(!keys.length){sel.innerHTML='<option value="">저장된 발주 없음</option>';}else{const cur=currentKey();const start=keys.indexOf(cur)>=0?cur:keys[0];keys.forEach(k=>{const o=document.createElement("option");o.value=k;o.textContent=bucketLabel(k,book[k]);if(k===start)o.selected=true;sel.appendChild(o);});}sel.onchange=renderMgrList;$("#mgrBucketWrap").style.display="";$("#mgrDownload").style.display="";renderMgrList();$("#mgr").classList.add("show");}
 function closeManager(){$("#mgr").classList.remove("show");}
-function renderMgrList(){const book=loadBook();const key=$("#mgrBucket").value;const b=key&&book[key];const list=$("#mgrList"),sum=$("#mgrSum");if(!b||!b.orders.length){list.innerHTML='<div class="mempty">이 월에 저장된 발주가 없습니다.</div>';sum.textContent="";return;}
+function toggleTrashView(){if(mgrView==="orders"){mgrView="trash";$("#mgrTrash").textContent="◀ 발주 목록";$("#mgrBucketWrap").style.display="none";$("#mgrDownload").style.display="none";renderTrashList();}else{openManager();}}
+function renderMgrList(){if(mgrView==="trash"){renderTrashList();return;}const book=loadBook();const key=$("#mgrBucket").value;const b=key&&book[key];const list=$("#mgrList"),sum=$("#mgrSum");if(!b||!b.orders.length){list.innerHTML='<div class="mempty">이 월에 저장된 발주가 없습니다.</div>';sum.textContent="";return;}
   let tot=0;const rows=b.orders.map((o,i)=>{const q=(o.items||[]).reduce((a,it)=>a+(+it.qty||0),0);const n=(o.items||[]).length;tot+=q;return`<tr><td class="c">${i+1}</td><td>${escH(o.sheet||o.date||"")}</td><td>${escH(o.supplier||"")}</td><td class="c">${n}종</td><td class="c">${q}</td><td class="c"><button class="del" data-k="${escH(key)}" data-i="${i}">삭제</button></td></tr>`;}).join("");
   list.innerHTML=`<table class="otbl"><tr><th class="c">No</th><th>시트(발주일)</th><th>공급처</th><th class="c">품목</th><th class="c">수량</th><th class="c">관리</th></tr>${rows}</table>`;
   sum.textContent=`총 ${b.orders.length}건 · 합계 ${tot}개`;
   list.querySelectorAll(".del").forEach(btn=>btn.onclick=()=>deleteOrder(btn.getAttribute("data-k"),+btn.getAttribute("data-i")));}
-function deleteOrder(key,idx){const book=loadBook();const b=book[key];if(!b||!b.orders[idx])return;const o=b.orders[idx];if(!confirm(`'${o.sheet||o.date}' 발주(${(o.items||[]).length}종)를 삭제할까요?\n삭제 후 '이 파일 다시 다운로드'를 눌러 수정된 엑셀을 받으세요.`))return;b.orders.splice(idx,1);if(!b.orders.length)delete book[key];saveBook(book);
-  // 삭제된 묶음이 사라졌으면 선택 목록 갱신, 아니면 현재 목록만 갱신
-  if(!book[key])openManager();else renderMgrList();updateBookInfo();toast("발주 1건을 삭제했습니다");}
-async function downloadCurrentBucket(){if(typeof ExcelJS==="undefined"){toast("엑셀 모듈 로드 실패");return;}const book=loadBook();const key=$("#mgrBucket").value;const b=key&&book[key];if(!b||!b.orders.length){toast("다운로드할 발주가 없습니다");return;}try{const blob=await buildWorkbookBlob(b.orders);triggerDownload(blob,bookFilename(b.project,key.split("|")[1]));toast("수정된 파일을 다시 내려받았습니다");}catch(e){console.error(e);toast("엑셀 생성 오류: "+(e.message||e));}}
+function deleteOrder(key,idx){const book=loadBook();const b=book[key];if(!b||!b.orders[idx])return;const o=b.orders[idx];if(!confirm(`'${o.sheet||o.date}' 발주(${(o.items||[]).length}종)를 휴지통으로 보낼까요?\n\n· [휴지통]에서 다시 복원할 수 있습니다.\n· 삭제 후 '이 파일 다시 다운로드'로 수정된 엑셀을 받으세요.`))return;trashPush({kind:"order",key,supplier:b.supplier||b.project||"",ym:b.ym||key.split("|")[1],ord:o});b.orders.splice(idx,1);if(!b.orders.length)delete book[key];saveBook(book);
+  if(!book[key])openManager();else renderMgrList();updateBookInfo();toast("휴지통으로 보냈습니다 · 복원 가능");}
+function trashDesc(e){const mon=monthOf(e.ym||"")+"";if(e.kind==="bucket")return`칸트_${e.supplier}_${mon}월발주 전체 · ${(e.orders||[]).length}건`;const q=(e.ord.items||[]).reduce((a,it)=>a+(+it.qty||0),0);return`${e.supplier} · ${e.ord.sheet||e.ord.date} · ${(e.ord.items||[]).length}종/${q}개`;}
+function renderTrashList(){const t=loadTrash();const list=$("#mgrList"),sum=$("#mgrSum");if(!t.length){list.innerHTML='<div class="mempty">휴지통이 비어 있습니다.</div>';sum.textContent="";return;}
+  const rows=t.map(e=>`<tr><td>${escH(e.ts||"")}</td><td>${escH(trashDesc(e))}</td><td class="c"><button class="del" style="border-color:#9fb3d1;background:#eef4fb;color:#1d3559" data-id="${escH(e.id)}" data-a="restore">복원</button> <button class="del" data-id="${escH(e.id)}" data-a="purge">완전삭제</button></td></tr>`).join("");
+  list.innerHTML=`<table class="otbl"><tr><th>삭제시각</th><th>내용</th><th class="c">관리</th></tr>${rows}</table>`;
+  sum.textContent=`휴지통 ${t.length}건`;
+  list.querySelectorAll(".del").forEach(btn=>btn.onclick=()=>{const id=btn.getAttribute("data-id");btn.getAttribute("data-a")==="restore"?restoreTrash(id):purgeTrash(id);});}
+function restoreTrash(id){const t=loadTrash();const idx=t.findIndex(e=>e.id===id);if(idx<0)return;const e=t[idx];const book=loadBook();const key=e.key||bucketKey(e.supplier,e.ym);const bucket=book[key]||(book[key]={supplier:e.supplier,ym:e.ym,orders:[]});
+  const add=e.kind==="bucket"?(e.orders||[]):[e.ord];let n=0;add.forEach(o=>{if(bucket.orders.some(x=>ordSig(x)===ordSig(o)))return;o.sheet=sheetNameFor(bucket.orders.map(x=>x.sheet),o.date);bucket.orders.push(o);n++;});
+  t.splice(idx,1);saveTrash(t);saveBook(book);updateBookInfo();mgrView="orders";openManager();$("#mgrBucket").value=key;renderMgrList();toast(`복원했습니다 · ${n}건`);}
+function purgeTrash(id){const t=loadTrash();const idx=t.findIndex(e=>e.id===id);if(idx<0)return;if(!confirm("휴지통에서 완전히 삭제할까요? 이후에는 복원할 수 없습니다."))return;t.splice(idx,1);saveTrash(t);renderTrashList();toast("완전 삭제했습니다");}
+/* 기존 발주서 엑셀(.xlsx)을 읽어 누적 장부로 가져오기 */
+function bufToDataUrl(buf,ext){const bytes=buf instanceof Uint8Array?buf:new Uint8Array(buf);let bin="";const CH=0x8000;for(let i=0;i<bytes.length;i+=CH){bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));}const mime=/jpe?g/i.test(ext||"")?"image/jpeg":"image/png";return`data:${mime};base64,${btoa(bin)}`;}
+function sheetToOrder(ws,wb){
+  let hr=-1;for(let r=1;r<=ws.rowCount;r++){if(String(ws.getCell(r,1).value||"")==="No"&&String(ws.getCell(r,3).value||"")==="품목명"){hr=r;break;}}
+  if(hr<0)return null;
+  let date="",supplier="",manager="";const info=String(ws.getCell(2,1).value||"");
+  let m=/발주일자:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/.exec(info);if(m)date=m[1];
+  m=/공급처:\s*([^]*?)\s*귀하/.exec(info);if(m)supplier=m[1].trim();
+  m=/담당자:\s*([^]*?)\s*$/.exec(info);if(m)manager=m[1].trim();
+  const imgByRow={};(ws.getImages()||[]).forEach(im=>{const rr=Math.round(im.range.tl.nativeRow)+1;imgByRow[rr]=im.imageId;});
+  const items=[];
+  for(let r=hr+1;r<=ws.rowCount;r++){const c1=String(ws.getCell(r,1).value||"");if(c1.indexOf("합")===0)break;const name=String(ws.getCell(r,3).value||"").trim();if(!name)continue;const qty=+(ws.getCell(r,4).value||0)||0;const note=String(ws.getCell(r,5).value||"").trim();let img="";const id=imgByRow[r];if(id!=null){try{const md=wb.getImage(id);if(md&&md.buffer)img=bufToDataUrl(md.buffer,md.extension);}catch(e){}}items.push({name,qty,note,img});}
+  if(!items.length)return null;
+  return{date,supplier:supplier||"인하이",manager,memo:"",items};
+}
+function ordSig(o){return(o.date||"")+"#"+(o.items||[]).map(it=>it.name+":"+it.qty).join(",");}
+async function importFiles(fileList){
+  if(typeof ExcelJS==="undefined"){toast("엑셀 모듈 로드 실패 — 새로고침 후 재시도");return;}
+  const files=[...fileList].filter(f=>/\.xlsx$/i.test(f.name));if(!files.length)return;
+  let added=0,dup=0,skip=0;const book=loadBook();
+  for(const f of files){try{const buf=await f.arrayBuffer();const wb=new ExcelJS.Workbook();await wb.xlsx.load(buf);for(const ws of wb.worksheets){const ord=sheetToOrder(ws,wb);if(!ord){skip++;continue;}const sup=ord.supplier||supplierOf(),ym=ymOf(ord.date),key=bucketKey(sup,ym);const bucket=book[key]||(book[key]={supplier:sup,ym,orders:[]});if(bucket.orders.some(x=>ordSig(x)===ordSig(ord))){dup++;continue;}ord.sheet=sheetNameFor(bucket.orders.map(o=>o.sheet),ord.date);bucket.orders.push(ord);added++;}}catch(e){console.error(e);skip++;}}
+  const ok=saveBook(book);updateBookInfo();if($("#mgr").classList.contains("show"))openManager();
+  if(!ok){toast("저장공간 부족으로 저장 실패");return;}
+  toast(`${added}건 불러옴`+(dup?` · 중복 ${dup} 제외`:"")+(skip?` · ${skip} 건너뜀`:""));
+}
+async function downloadCurrentBucket(){if(typeof ExcelJS==="undefined"){toast("엑셀 모듈 로드 실패");return;}const book=loadBook();const key=$("#mgrBucket").value;const b=key&&book[key];if(!b||!b.orders.length){toast("다운로드할 발주가 없습니다");return;}try{const blob=await buildWorkbookBlob(b.orders);triggerDownload(blob,bookFilename(b.supplier||b.project,key.split("|")[1]));toast("수정된 파일을 다시 내려받았습니다");}catch(e){console.error(e);toast("엑셀 생성 오류: "+(e.message||e));}}
 /* 발주 기록을 구글 시트(Apps Script)로 저장 */
 async function saveOrder(sel,meta){
   if(!SAVE_URL)return false;
@@ -373,7 +418,7 @@ async function copyTable(){const sel=selected();if(!sel.length)return;const head
 function clearAll(){if(!Object.keys(state.qty).length)return;if(confirm("입력한 수량을 모두 지울까요?")){state.qty={};state.notes={};render();toast("초기화했습니다");}}
 let tT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),2200);}
 function syncSupplier(){const el=$("#supplier");if(!el)return;const labels=Object.keys(CATALOG).map(k=>CATALOG[k].label);if(!el.value.trim()||labels.includes(el.value.trim()))el.value=CATALOG[state.factory].label;}
-(function init(){const d=new Date();$("#orderDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");if(!$("#project").value)$("#project").value="아이론";syncSupplier();$("#search").oninput=e=>{state.search=e.target.value;renderCatalog();};$("#btnExcel").onclick=downloadExcel;$("#btnCopy").onclick=copyTable;$("#btnClear").onclick=clearAll;$("#btnNewBook").onclick=resetMonthBook;$("#btnManage").onclick=openManager;$("#mgrClose").onclick=closeManager;$("#mgrDone").onclick=closeManager;$("#mgrDownload").onclick=downloadCurrentBucket;$("#mgr").addEventListener("click",e=>{if(e.target===$("#mgr"))closeManager();});$("#project").oninput=updateBookInfo;$("#orderDate").onchange=updateBookInfo;render();updateBookInfo();})();
+(function init(){const d=new Date();$("#orderDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");syncSupplier();$("#search").oninput=e=>{state.search=e.target.value;renderCatalog();};$("#btnExcel").onclick=downloadExcel;$("#btnCopy").onclick=copyTable;$("#btnClear").onclick=clearAll;$("#btnNewBook").onclick=resetMonthBook;$("#btnManage").onclick=openManager;$("#mgrClose").onclick=closeManager;$("#mgrDone").onclick=closeManager;$("#mgrDownload").onclick=downloadCurrentBucket;$("#mgrImport").onclick=()=>$("#mgrFile").click();$("#mgrTrash").onclick=toggleTrashView;$("#mgrFile").onchange=async e=>{await importFiles(e.target.files);e.target.value="";};$("#mgr").addEventListener("click",e=>{if(e.target===$("#mgr"))closeManager();});$("#supplier").oninput=updateBookInfo;$("#orderDate").onchange=updateBookInfo;render();updateBookInfo();})();
 </script>
 </body>
 </html>
