@@ -82,6 +82,9 @@
   table.pv input.pqty:focus{outline:none;border-color:var(--navy);background:#fff8ec}
   .pvfoot{padding:12px 15px;border-top:1px solid var(--line);background:#fbfcfe}
   .pvfoot .totrow{display:flex;justify-content:space-between;font-weight:700;color:var(--navy);margin-bottom:10px}
+  .pvfoot .bookrow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:10px}
+  .pvfoot .bookrow .gcount{margin:0;font-size:11px;line-height:1.3}
+  .btn.sm{padding:4px 9px;font-size:11px}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
   .btn{padding:9px 15px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:700;font-size:14px;color:var(--navy)}
   .btn:hover{background:#f7f9fc}
@@ -99,6 +102,7 @@
 <div class="wrap">
   <div class="tabs" id="tabs"></div>
   <div class="infobar">
+    <div class="field"><label>현장 / 프로젝트 (파일명)</label><input type="text" id="project" placeholder="예: 아이론"></div>
     <div class="field"><label>발주일자</label><input type="date" id="orderDate"></div>
     <div class="field"><label>공급처 (○○ 귀하)</label><input type="text" id="supplier" placeholder="예: 인하이"></div>
     <div class="field"><label>담당자</label><input type="text" id="manager" placeholder="이름"></div>
@@ -115,6 +119,7 @@
       <div id="previewBody" style="max-height:52vh;overflow:auto"></div>
       <div class="pvfoot">
         <div class="totrow"><span id="totQty">총 0개</span></div>
+        <div class="bookrow"><span id="bookInfo" class="gcount">이번 달 첫 발주</span><button class="btn ghost sm" id="btnNewBook">월 파일 새로 시작</button></div>
         <div class="actions">
           <button class="btn ghost" id="btnClear">초기화</button>
           <button class="btn" id="btnCopy">표 복사</button>
@@ -245,32 +250,67 @@ function render(){renderTabs();renderChips();renderColorTabs();renderCatalog();r
 function blankPng(w,h){const c=document.createElement("canvas");c.width=w||160;c.height=h||120;const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.strokeStyle="#d6dbe6";g.lineWidth=2;g.strokeRect(3,3,c.width-6,c.height-6);return c.toDataURL("image/png");}
 function imgToRaster(src){return new Promise(res=>{if(/^data:image\/(png|jpe?g);/i.test(src)){res(src);return;}const img=new Image();if(/^https?:/i.test(src))img.crossOrigin="anonymous";img.onload=()=>{try{const w=img.naturalWidth||160,h=img.naturalHeight||120;const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);res(c.toDataURL("image/png"));}catch(e){res(blankPng());}};img.onerror=()=>res(blankPng());img.src=src;});}
 function rasterParts(u){return {base64:u.split(",")[1],extension:/^data:image\/jpe?g/i.test(u)?"jpeg":"png"};}
+/* ── 월별 누적 발주장부(localStorage) ─────────────────────────────
+   브라우저는 이미 내려받은 파일에 이어쓸 수 없으므로, 한 달치 발주를
+   이 페이지 저장소에 쌓아두고 다운로드할 때마다 '그 달 전체'를 하나의
+   엑셀 파일(발주 1건 = 시트 1개)로 다시 만들어 내려받는다.
+   달(년-월)이 바뀌면 자동으로 새 묶음 → 새 파일이 된다. */
+const BOOK_KEY="kant_book_v1";
+function loadBook(){try{return JSON.parse(localStorage.getItem(BOOK_KEY)||"{}")||{};}catch(e){return {};}}
+function saveBook(b){try{localStorage.setItem(BOOK_KEY,JSON.stringify(b));return true;}catch(e){console.error(e);return false;}}
+function ymOf(date){const m=/^(\d{4})-(\d{2})/.exec(date||"");if(m)return m[1]+"-"+m[2];const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+function projOf(){return ($("#project").value||"아이론").trim()||"아이론";}
+function bucketKey(project,ym){return project+"|"+ym;}
+function currentKey(){return bucketKey(projOf(),ymOf($("#orderDate").value||""));}
+function sheetNameFor(existing,date){let base;const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(date||"");if(m)base=parseInt(m[2],10)+"월"+parseInt(m[3],10)+"일";else base=(date||"발주").replace(/[:\\\/?*\[\]]/g,"");base=base.slice(0,28);let name=base,n=2;while(existing.indexOf(name)>=0){name=base+"("+n+")";n++;}return name;}
+function monthOf(ym){return parseInt(ym.split("-")[1],10);}
+function bookFilename(project,ym){return`칸트_${project}_${monthOf(ym)}월발주.xlsx`;}
+function updateBookInfo(){const el=$("#bookInfo");if(!el)return;const key=currentKey(),book=loadBook();const b=book[key];const n=(b&&b.orders.length)||0;const ym=ymOf($("#orderDate").value||"");el.textContent=n?`이번 달 파일: 칸트_${projOf()}_${monthOf(ym)}월발주 · 누적 ${n}건`:`이번 달 첫 발주 · 칸트_${projOf()}_${monthOf(ym)}월발주`;}
+function resetMonthBook(){const key=currentKey(),book=loadBook();const b=book[key];if(!b||!b.orders.length){toast("이번 달 저장된 발주가 없습니다");return;}if(confirm(`이번 달(${key.split("|")[1]}) 누적 발주 ${b.orders.length}건을 비우고 새 파일로 시작할까요?\n(이미 다운로드한 엑셀 파일은 그대로 남아 있습니다)`)){delete book[key];saveBook(book);updateBookInfo();toast("새 월 파일로 초기화했습니다");}}
+
+/* 발주 1건을 워크시트 1개로 그린다 */
+async function buildSheet(wb,sheetName,ord){
+  const NAVY="FF132540",HEAD="FF1D3559",LINE="FFDDE3EC";const thin={style:"thin",color:{argb:LINE}};const border={top:thin,left:thin,right:thin,bottom:thin};
+  const ws=wb.addWorksheet(sheetName,{views:[{showGridLines:false}],pageSetup:{orientation:"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.5,right:0.5,top:0.5,bottom:0.5,header:0.2,footer:0.2}}});
+  ws.columns=[{width:5},{width:8},{width:58},{width:9},{width:26}];const NC=5;const setM=(a,b,c,d)=>ws.mergeCells(a,b,c,d);
+  setM(1,1,1,NC);const tt=ws.getCell("A1");tt.value="발  주  서";tt.font={name:"맑은 고딕",bold:true,size:20,color:{argb:NAVY}};tt.alignment={horizontal:"center",vertical:"middle"};ws.getRow(1).height=34;
+  setM(2,1,2,NC);const info=ws.getCell("A2");info.value=`발주일자: ${ord.date||"-"}    공급처: ${ord.supplier} 귀하    담당자: ${ord.manager||"-"}`;info.font={name:"맑은 고딕",size:11,color:{argb:"FF444444"}};ws.getRow(2).height=20;
+  const fill7={type:"pattern",pattern:"solid",fgColor:{argb:"FFF7F9FC"}};
+  function infoRow(r,cells){cells.forEach(([c1,c2,v])=>{setM(r,c1,r,c2);const cell=ws.getCell(r,c1);cell.value=v;cell.font={name:"맑은 고딕",size:10};cell.alignment={horizontal:"left",vertical:"middle"};});for(let c=1;c<=NC;c++){const cell=ws.getCell(r,c);cell.border=border;cell.fill=fill7;}ws.getRow(r).height=19;}
+  let r=3;
+  infoRow(r++,[[1,2,`상호: ${ISSUER.title}`],[3,5,`대표자: ${ISSUER.ceo}    사업자등록번호: ${ISSUER.bizno}`]]);
+  infoRow(r++,[[1,5,`소재지: ${ISSUER.addr}`]]);
+  infoRow(r++,[[1,2,`업태: ${ISSUER.biz}`],[3,5,`종목: ${ISSUER.item}    연락처: ${ISSUER.tel}`]]);
+  infoRow(r++,[[1,5,`업체: KANT LIGHTING`]]);r++;
+  const headRow=r;["No","사진","품목명","수량","비고"].forEach((h,i)=>{const c=ws.getCell(r,i+1);c.value=h;c.font={name:"맑은 고딕",bold:true,size:10,color:{argb:"FFFFFFFF"}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:HEAD}};c.alignment={horizontal:"center",vertical:"middle"};c.border=border;});ws.getRow(r).height=22;r++;
+  const IMG=50,items=ord.items||[];
+  for(let i=0;i<items.length;i++){const s=items[i];const row=ws.getRow(r);row.height=42;ws.getCell(r,1).value=i+1;ws.getCell(r,3).value=s.name;ws.getCell(r,4).value=s.qty;ws.getCell(r,5).value=s.note||"";for(let c=1;c<=NC;c++){const cell=ws.getCell(r,c);cell.border=border;cell.alignment={vertical:"middle",horizontal:(c===3||c===5)?"left":"center",wrapText:(c===3||c===5)};cell.font={name:"맑은 고딕",size:9};}if(s.img){try{const du=await imgToRaster(s.img);const id=wb.addImage(rasterParts(du));ws.addImage(id,{tl:{col:1.08,row:(r-1)+0.08},ext:{width:IMG,height:IMG}});}catch(e){}}r++;}
+  setM(r,1,r,3);const tl=ws.getCell(r,1);tl.value="합 계 수량";tl.font={name:"맑은 고딕",bold:true,size:10,color:{argb:NAVY}};tl.alignment={horizontal:"right",vertical:"middle"};ws.getCell(r,4).value={formula:`SUM(D${headRow+1}:D${r-1})`};for(let c=1;c<=NC;c++){const cell=ws.getCell(r,c);cell.border=border;cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFEEF2F8"}};if(c===4){cell.alignment={horizontal:"center",vertical:"middle"};cell.font={name:"맑은 고딕",bold:true,size:11,color:{argb:NAVY}};}}ws.getRow(r).height=22;
+}
+
 async function downloadExcel(){
   const sel=selected();if(!sel.length)return;
   if(typeof ExcelJS==="undefined"){toast("엑셀 모듈 로드 실패 — 인터넷 확인 후 재시도하거나 '표 복사' 이용");return;}
   try{
     const date=$("#orderDate").value||"";const supplier=($("#supplier").value||CATALOG[state.factory].label).trim();const manager=$("#manager").value||"";const memo=$("#memo").value||"";
-    const NAVY="FF132540",HEAD="FF1D3559",LINE="FFDDE3EC";const thin={style:"thin",color:{argb:LINE}};const border={top:thin,left:thin,right:thin,bottom:thin};
-    const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet("발주서",{views:[{showGridLines:false}],pageSetup:{orientation:"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.5,right:0.5,top:0.5,bottom:0.5,header:0.2,footer:0.2}}});
-    // 핵심 열: No · 사진 · 품목명 · 수량 · 비고 (규격 제외)
-    ws.columns=[{width:5},{width:8},{width:58},{width:9},{width:26}];const NC=5;const setM=(a,b,c,d)=>ws.mergeCells(a,b,c,d);
-    setM(1,1,1,NC);const tt=ws.getCell("A1");tt.value="발  주  서";tt.font={name:"맑은 고딕",bold:true,size:20,color:{argb:NAVY}};tt.alignment={horizontal:"center",vertical:"middle"};ws.getRow(1).height=34;
-    setM(2,1,2,NC);const info=ws.getCell("A2");info.value=`발주일자: ${date||"-"}    공급처: ${supplier} 귀하    담당자: ${manager||"-"}`;info.font={name:"맑은 고딕",size:11,color:{argb:"FF444444"}};ws.getRow(2).height=20;
-    const fill7={type:"pattern",pattern:"solid",fgColor:{argb:"FFF7F9FC"}};
-    function infoRow(r,cells){cells.forEach(([c1,c2,v])=>{setM(r,c1,r,c2);const cell=ws.getCell(r,c1);cell.value=v;cell.font={name:"맑은 고딕",size:10};cell.alignment={horizontal:"left",vertical:"middle"};});for(let c=1;c<=NC;c++){const cell=ws.getCell(r,c);cell.border=border;cell.fill=fill7;}ws.getRow(r).height=19;}
-    let r=3;
-    infoRow(r++,[[1,2,`상호: ${ISSUER.title}`],[3,5,`대표자: ${ISSUER.ceo}    사업자등록번호: ${ISSUER.bizno}`]]);
-    infoRow(r++,[[1,5,`소재지: ${ISSUER.addr}`]]);
-    infoRow(r++,[[1,2,`업태: ${ISSUER.biz}`],[3,5,`종목: ${ISSUER.item}    연락처: ${ISSUER.tel}`]]);
-    infoRow(r++,[[1,5,`업체: KANT LIGHTING`]]);r++;
-    const headRow=r;["No","사진","품목명","수량","비고"].forEach((h,i)=>{const c=ws.getCell(r,i+1);c.value=h;c.font={name:"맑은 고딕",bold:true,size:10,color:{argb:"FFFFFFFF"}};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:HEAD}};c.alignment={horizontal:"center",vertical:"middle"};c.border=border;});ws.getRow(r).height=22;r++;
-    const IMG=50;
-    for(let i=0;i<sel.length;i++){const s=sel[i];const row=ws.getRow(r);row.height=42;ws.getCell(r,1).value=i+1;ws.getCell(r,3).value=fullName(s.o);ws.getCell(r,4).value=s.qty;ws.getCell(r,5).value=s.note||"";for(let c=1;c<=NC;c++){const cell=ws.getCell(r,c);cell.border=border;cell.alignment={vertical:"middle",horizontal:(c===3||c===5)?"left":"center",wrapText:(c===3||c===5)};cell.font={name:"맑은 고딕",size:9};}const du=await imgToRaster(oImg(s.o));const id=wb.addImage(rasterParts(du));ws.addImage(id,{tl:{col:1.08,row:(r-1)+0.08},ext:{width:IMG,height:IMG}});r++;}
-    setM(r,1,r,3);const tl=ws.getCell(r,1);tl.value="합 계 수량";tl.font={name:"맑은 고딕",bold:true,size:10,color:{argb:NAVY}};tl.alignment={horizontal:"right",vertical:"middle"};ws.getCell(r,4).value={formula:`SUM(D${headRow+1}:D${r-1})`};for(let c=1;c<=NC;c++){const cell=ws.getCell(r,c);cell.border=border;cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFEEF2F8"}};if(c===4){cell.alignment={horizontal:"center",vertical:"middle"};cell.font={name:"맑은 고딕",bold:true,size:11,color:{argb:NAVY}};}}ws.getRow(r).height=22;r+=2;
+    const project=projOf(),ym=ymOf(date),key=bucketKey(project,ym);
+    // 이번 발주 1건 구성 (품목별 이미지 원본을 함께 저장)
+    const ord={date,supplier,manager,memo,items:sel.map(s=>({name:fullName(s.o),qty:s.qty,note:s.note||"",img:oImg(s.o)}))};
+    // 이번 달 묶음에 시트로 추가
+    const book=loadBook();const bucket=book[key]||(book[key]={project,ym,orders:[]});
+    ord.sheet=sheetNameFor(bucket.orders.map(o=>o.sheet),date);
+    bucket.orders.push(ord);
+    const stored=saveBook(book);
+    // 이번 달 전체를 하나의 파일로 다시 생성 (발주 1건 = 시트 1개)
+    const wb=new ExcelJS.Workbook();
+    for(const o of bucket.orders){await buildSheet(wb,o.sheet,o);}
     const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`발주서_${supplier}_${(date||"").replace(/-/g,"")||"미지정"}.xlsx`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    const fname=bookFilename(project,ym);
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
     const saved=await saveOrder(sel,{date,supplier,manager,memo});
-    toast(`${supplier} 발주서 다운로드`+(saved?" + 기록 저장":"")+" 완료");
+    updateBookInfo();
+    if(!stored)toast("⚠ 저장공간 부족 — 파일엔 포함됐지만 누적 저장은 실패했습니다");
+    else toast(`${fname} · ${ord.sheet} 시트 추가 (누적 ${bucket.orders.length}건)`+(saved?" · 기록 저장":""));
   }catch(e){console.error(e);toast("엑셀 생성 오류: "+(e.message||e));}
 }
 /* 발주 기록을 구글 시트(Apps Script)로 저장 */
@@ -286,7 +326,7 @@ async function copyTable(){const sel=selected();if(!sel.length)return;const head
 function clearAll(){if(!Object.keys(state.qty).length)return;if(confirm("입력한 수량을 모두 지울까요?")){state.qty={};state.notes={};render();toast("초기화했습니다");}}
 let tT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),2200);}
 function syncSupplier(){const el=$("#supplier");if(!el)return;const labels=Object.keys(CATALOG).map(k=>CATALOG[k].label);if(!el.value.trim()||labels.includes(el.value.trim()))el.value=CATALOG[state.factory].label;}
-(function init(){const d=new Date();$("#orderDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");syncSupplier();$("#search").oninput=e=>{state.search=e.target.value;renderCatalog();};$("#btnExcel").onclick=downloadExcel;$("#btnCopy").onclick=copyTable;$("#btnClear").onclick=clearAll;render();})();
+(function init(){const d=new Date();$("#orderDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");if(!$("#project").value)$("#project").value="아이론";syncSupplier();$("#search").oninput=e=>{state.search=e.target.value;renderCatalog();};$("#btnExcel").onclick=downloadExcel;$("#btnCopy").onclick=copyTable;$("#btnClear").onclick=clearAll;$("#btnNewBook").onclick=resetMonthBook;$("#project").oninput=updateBookInfo;$("#orderDate").onchange=updateBookInfo;render();updateBookInfo();})();
 </script>
 </body>
 </html>
