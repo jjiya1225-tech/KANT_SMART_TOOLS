@@ -101,6 +101,9 @@
   .otbl td.c,.otbl th.c{text-align:center}
   .otbl .del{border:1px solid #e6b3b3;background:#fff5f5;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
   .otbl .del:hover{background:#c0392b;color:#fff;border-color:#c0392b}
+  .otbl .mv{border:1px solid var(--line);background:#fff;color:#1d3559;border-radius:6px;padding:3px 7px;font-size:12px;cursor:pointer;line-height:1}
+  .otbl .mv:hover:not(:disabled){background:#eef4fb}
+  .otbl .mv:disabled{opacity:.3;cursor:default}
   .mempty{padding:26px 8px;text-align:center;color:var(--muted);font-size:13px}
   .modal .mfoot{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -363,10 +366,12 @@ function openManager(){mgrView="orders";$("#mgrTrash").textContent="휴지통";c
 function closeManager(){$("#mgr").classList.remove("show");}
 function toggleTrashView(){if(mgrView==="orders"){mgrView="trash";$("#mgrTrash").textContent="◀ 발주 목록";$("#mgrBucketWrap").style.display="none";$("#mgrDownload").style.display="none";renderTrashList();}else{openManager();}}
 function renderMgrList(){if(mgrView==="trash"){renderTrashList();return;}const book=loadBook();const key=$("#mgrBucket").value;const b=key&&book[key];const list=$("#mgrList"),sum=$("#mgrSum");if(!b||!b.orders.length){list.innerHTML='<div class="mempty">이 월에 저장된 발주가 없습니다.</div>';sum.textContent="";return;}
-  let tot=0;const rows=b.orders.map((o,i)=>{const q=(o.items||[]).reduce((a,it)=>a+(+it.qty||0),0);const n=(o.items||[]).length;tot+=q;return`<tr><td class="c">${i+1}</td><td>${escH(o.sheet||o.date||"")}</td><td>${escH(o.supplier||"")}</td><td class="c">${n}종</td><td class="c">${q}</td><td class="c"><button class="del" data-k="${escH(key)}" data-i="${i}">삭제</button></td></tr>`;}).join("");
-  list.innerHTML=`<table class="otbl"><tr><th class="c">No</th><th>시트(발주일)</th><th>공급처</th><th class="c">품목</th><th class="c">수량</th><th class="c">관리</th></tr>${rows}</table>`;
+  let tot=0;const last=b.orders.length-1;const rows=b.orders.map((o,i)=>{const q=(o.items||[]).reduce((a,it)=>a+(+it.qty||0),0);const n=(o.items||[]).length;tot+=q;return`<tr><td class="c">${i+1}</td><td>${escH(o.sheet||o.date||"")}</td><td>${escH(o.supplier||"")}</td><td class="c">${n}종</td><td class="c">${q}</td><td class="c" style="white-space:nowrap"><button class="mv" data-k="${escH(key)}" data-i="${i}" data-d="-1"${i===0?" disabled":""}>▲</button><button class="mv" data-k="${escH(key)}" data-i="${i}" data-d="1"${i===last?" disabled":""}>▼</button> <button class="del" data-k="${escH(key)}" data-i="${i}">삭제</button></td></tr>`;}).join("");
+  list.innerHTML=`<table class="otbl"><tr><th class="c">No</th><th>시트(발주일)</th><th>공급처</th><th class="c">품목</th><th class="c">수량</th><th class="c">순서 / 관리</th></tr>${rows}</table>`;
   sum.textContent=`총 ${b.orders.length}건 · 합계 ${tot}개`;
+  list.querySelectorAll(".mv").forEach(btn=>btn.onclick=()=>moveOrder(btn.getAttribute("data-k"),+btn.getAttribute("data-i"),+btn.getAttribute("data-d")));
   list.querySelectorAll(".del").forEach(btn=>btn.onclick=()=>deleteOrder(btn.getAttribute("data-k"),+btn.getAttribute("data-i")));}
+function moveOrder(key,idx,dir){const book=loadBook();const b=book[key];if(!b)return;const j=idx+dir;if(j<0||j>=b.orders.length)return;const a=b.orders;const tmp=a[idx];a[idx]=a[j];a[j]=tmp;saveBook(book);renderMgrList();}
 function deleteOrder(key,idx){const book=loadBook();const b=book[key];if(!b||!b.orders[idx])return;const o=b.orders[idx];if(!confirm(`'${o.sheet||o.date}' 발주(${(o.items||[]).length}종)를 휴지통으로 보낼까요?\n\n· [휴지통]에서 다시 복원할 수 있습니다.\n· 삭제 후 '이 파일 다시 다운로드'로 수정된 엑셀을 받으세요.`))return;trashPush({kind:"order",key,supplier:b.supplier||b.project||"",ym:b.ym||key.split("|")[1],ord:o});b.orders.splice(idx,1);if(!b.orders.length)delete book[key];saveBook(book);
   if(!book[key])openManager();else renderMgrList();updateBookInfo();toast("휴지통으로 보냈습니다 · 복원 가능");}
 function trashDesc(e){const mon=monthOf(e.ym||"")+"";if(e.kind==="bucket")return`칸트_${e.supplier}_${mon}월발주 전체 · ${(e.orders||[]).length}건`;const q=(e.ord.items||[]).reduce((a,it)=>a+(+it.qty||0),0);return`${e.supplier} · ${e.ord.sheet||e.ord.date} · ${(e.ord.items||[]).length}종/${q}개`;}
