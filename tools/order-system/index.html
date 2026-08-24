@@ -85,6 +85,24 @@
   .pvfoot .bookrow{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:10px}
   .pvfoot .bookrow .gcount{margin:0;font-size:11px;line-height:1.3}
   .btn.sm{padding:4px 9px;font-size:11px}
+  .pvfoot .bookrow .bookbtns{display:flex;gap:6px;flex-shrink:0}
+  .modal-bg{position:fixed;inset:0;background:rgba(19,37,64,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+  .modal .mhead{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line)}
+  .modal .mhead h3{margin:0;font-size:16px;color:var(--navy)}
+  .modal .mhead .x{margin-left:auto;cursor:pointer;border:none;background:none;font-size:22px;line-height:1;color:var(--muted)}
+  .modal .mbar{display:flex;align-items:center;gap:8px;padding:10px 18px;border-bottom:1px solid var(--line);background:#fbfcfe;flex-wrap:wrap}
+  .modal .mbar select{padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:13px;max-width:100%}
+  .modal .mbody{padding:8px 18px 4px;overflow:auto}
+  .otbl{width:100%;border-collapse:collapse;font-size:13px}
+  .otbl th,.otbl td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:middle}
+  .otbl th{color:var(--muted);font-weight:600;font-size:11px}
+  .otbl td.c,.otbl th.c{text-align:center}
+  .otbl .del{border:1px solid #e6b3b3;background:#fff5f5;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+  .otbl .del:hover{background:#c0392b;color:#fff;border-color:#c0392b}
+  .mempty{padding:26px 8px;text-align:center;color:var(--muted);font-size:13px}
+  .modal .mfoot{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
   .btn{padding:9px 15px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:700;font-size:14px;color:var(--navy)}
   .btn:hover{background:#f7f9fc}
@@ -119,7 +137,7 @@
       <div id="previewBody" style="max-height:52vh;overflow:auto"></div>
       <div class="pvfoot">
         <div class="totrow"><span id="totQty">총 0개</span></div>
-        <div class="bookrow"><span id="bookInfo" class="gcount">이번 달 첫 발주</span><button class="btn ghost sm" id="btnNewBook">월 파일 새로 시작</button></div>
+        <div class="bookrow"><span id="bookInfo" class="gcount">이번 달 첫 발주</span><span class="bookbtns"><button class="btn ghost sm" id="btnManage">발주 목록 관리</button><button class="btn ghost sm" id="btnNewBook">월 파일 새로 시작</button></span></div>
         <div class="actions">
           <button class="btn ghost" id="btnClear">초기화</button>
           <button class="btn" id="btnCopy">표 복사</button>
@@ -129,6 +147,21 @@
     </div>
   </div>
   <div class="hint">※ 색상·색온도는 품목 안 표(매트릭스)에서 칸마다 수량을 입력하세요. Tab 키로 칸 이동이 됩니다.</div>
+</div>
+<div class="modal-bg" id="mgr">
+  <div class="modal">
+    <div class="mhead"><h3>발주 목록 관리</h3><button class="x" id="mgrClose">&times;</button></div>
+    <div class="mbar">
+      <label style="font-size:12px;color:var(--muted)">파일(월)</label>
+      <select id="mgrBucket"></select>
+      <span id="mgrSum" class="gcount" style="margin-left:auto"></span>
+    </div>
+    <div class="mbody"><div id="mgrList"></div></div>
+    <div class="mfoot">
+      <button class="btn ghost sm" id="mgrDownload">이 파일 다시 다운로드</button>
+      <button class="btn sm" id="mgrDone">닫기</button>
+    </div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
@@ -288,6 +321,9 @@ async function buildSheet(wb,sheetName,ord){
   setM(r,1,r,3);const tl=ws.getCell(r,1);tl.value="합 계 수량";tl.font={name:"맑은 고딕",bold:true,size:10,color:{argb:NAVY}};tl.alignment={horizontal:"right",vertical:"middle"};ws.getCell(r,4).value={formula:`SUM(D${headRow+1}:D${r-1})`};for(let c=1;c<=NC;c++){const cell=ws.getCell(r,c);cell.border=border;cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFEEF2F8"}};if(c===4){cell.alignment={horizontal:"center",vertical:"middle"};cell.font={name:"맑은 고딕",bold:true,size:11,color:{argb:NAVY}};}}ws.getRow(r).height=22;
 }
 
+async function buildWorkbookBlob(orders){const wb=new ExcelJS.Workbook();for(const o of orders){await buildSheet(wb,o.sheet,o);}const buf=await wb.xlsx.writeBuffer();return new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});}
+function triggerDownload(blob,fname){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);}
+
 async function downloadExcel(){
   const sel=selected();if(!sel.length)return;
   if(typeof ExcelJS==="undefined"){toast("엑셀 모듈 로드 실패 — 인터넷 확인 후 재시도하거나 '표 복사' 이용");return;}
@@ -302,17 +338,28 @@ async function downloadExcel(){
     bucket.orders.push(ord);
     const stored=saveBook(book);
     // 이번 달 전체를 하나의 파일로 다시 생성 (발주 1건 = 시트 1개)
-    const wb=new ExcelJS.Workbook();
-    for(const o of bucket.orders){await buildSheet(wb,o.sheet,o);}
-    const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-    const fname=bookFilename(project,ym);
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    const blob=await buildWorkbookBlob(bucket.orders);const fname=bookFilename(project,ym);
+    triggerDownload(blob,fname);
     const saved=await saveOrder(sel,{date,supplier,manager,memo});
     updateBookInfo();
     if(!stored)toast("⚠ 저장공간 부족 — 파일엔 포함됐지만 누적 저장은 실패했습니다");
     else toast(`${fname} · ${ord.sheet} 시트 추가 (누적 ${bucket.orders.length}건)`+(saved?" · 기록 저장":""));
   }catch(e){console.error(e);toast("엑셀 생성 오류: "+(e.message||e));}
 }
+
+/* ── 발주 목록 관리(삭제/재다운로드) ───────────────────────────── */
+function bucketLabel(key,b){const ym=key.split("|")[1]||b.ym;return`칸트_${b.project}_${monthOf(ym)}월발주  (${ym} · ${b.orders.length}건)`;}
+function openManager(){const book=loadBook();const keys=Object.keys(book).filter(k=>book[k]&&book[k].orders&&book[k].orders.length).sort().reverse();const sel=$("#mgrBucket");sel.innerHTML="";if(!keys.length){sel.innerHTML='<option value="">저장된 발주 없음</option>';}else{const cur=currentKey();const start=keys.indexOf(cur)>=0?cur:keys[0];keys.forEach(k=>{const o=document.createElement("option");o.value=k;o.textContent=bucketLabel(k,book[k]);if(k===start)o.selected=true;sel.appendChild(o);});}sel.onchange=renderMgrList;renderMgrList();$("#mgr").classList.add("show");}
+function closeManager(){$("#mgr").classList.remove("show");}
+function renderMgrList(){const book=loadBook();const key=$("#mgrBucket").value;const b=key&&book[key];const list=$("#mgrList"),sum=$("#mgrSum");if(!b||!b.orders.length){list.innerHTML='<div class="mempty">이 월에 저장된 발주가 없습니다.</div>';sum.textContent="";return;}
+  let tot=0;const rows=b.orders.map((o,i)=>{const q=(o.items||[]).reduce((a,it)=>a+(+it.qty||0),0);const n=(o.items||[]).length;tot+=q;return`<tr><td class="c">${i+1}</td><td>${escH(o.sheet||o.date||"")}</td><td>${escH(o.supplier||"")}</td><td class="c">${n}종</td><td class="c">${q}</td><td class="c"><button class="del" data-k="${escH(key)}" data-i="${i}">삭제</button></td></tr>`;}).join("");
+  list.innerHTML=`<table class="otbl"><tr><th class="c">No</th><th>시트(발주일)</th><th>공급처</th><th class="c">품목</th><th class="c">수량</th><th class="c">관리</th></tr>${rows}</table>`;
+  sum.textContent=`총 ${b.orders.length}건 · 합계 ${tot}개`;
+  list.querySelectorAll(".del").forEach(btn=>btn.onclick=()=>deleteOrder(btn.getAttribute("data-k"),+btn.getAttribute("data-i")));}
+function deleteOrder(key,idx){const book=loadBook();const b=book[key];if(!b||!b.orders[idx])return;const o=b.orders[idx];if(!confirm(`'${o.sheet||o.date}' 발주(${(o.items||[]).length}종)를 삭제할까요?\n삭제 후 '이 파일 다시 다운로드'를 눌러 수정된 엑셀을 받으세요.`))return;b.orders.splice(idx,1);if(!b.orders.length)delete book[key];saveBook(book);
+  // 삭제된 묶음이 사라졌으면 선택 목록 갱신, 아니면 현재 목록만 갱신
+  if(!book[key])openManager();else renderMgrList();updateBookInfo();toast("발주 1건을 삭제했습니다");}
+async function downloadCurrentBucket(){if(typeof ExcelJS==="undefined"){toast("엑셀 모듈 로드 실패");return;}const book=loadBook();const key=$("#mgrBucket").value;const b=key&&book[key];if(!b||!b.orders.length){toast("다운로드할 발주가 없습니다");return;}try{const blob=await buildWorkbookBlob(b.orders);triggerDownload(blob,bookFilename(b.project,key.split("|")[1]));toast("수정된 파일을 다시 내려받았습니다");}catch(e){console.error(e);toast("엑셀 생성 오류: "+(e.message||e));}}
 /* 발주 기록을 구글 시트(Apps Script)로 저장 */
 async function saveOrder(sel,meta){
   if(!SAVE_URL)return false;
@@ -326,7 +373,7 @@ async function copyTable(){const sel=selected();if(!sel.length)return;const head
 function clearAll(){if(!Object.keys(state.qty).length)return;if(confirm("입력한 수량을 모두 지울까요?")){state.qty={};state.notes={};render();toast("초기화했습니다");}}
 let tT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),2200);}
 function syncSupplier(){const el=$("#supplier");if(!el)return;const labels=Object.keys(CATALOG).map(k=>CATALOG[k].label);if(!el.value.trim()||labels.includes(el.value.trim()))el.value=CATALOG[state.factory].label;}
-(function init(){const d=new Date();$("#orderDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");if(!$("#project").value)$("#project").value="아이론";syncSupplier();$("#search").oninput=e=>{state.search=e.target.value;renderCatalog();};$("#btnExcel").onclick=downloadExcel;$("#btnCopy").onclick=copyTable;$("#btnClear").onclick=clearAll;$("#btnNewBook").onclick=resetMonthBook;$("#project").oninput=updateBookInfo;$("#orderDate").onchange=updateBookInfo;render();updateBookInfo();})();
+(function init(){const d=new Date();$("#orderDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");if(!$("#project").value)$("#project").value="아이론";syncSupplier();$("#search").oninput=e=>{state.search=e.target.value;renderCatalog();};$("#btnExcel").onclick=downloadExcel;$("#btnCopy").onclick=copyTable;$("#btnClear").onclick=clearAll;$("#btnNewBook").onclick=resetMonthBook;$("#btnManage").onclick=openManager;$("#mgrClose").onclick=closeManager;$("#mgrDone").onclick=closeManager;$("#mgrDownload").onclick=downloadCurrentBucket;$("#mgr").addEventListener("click",e=>{if(e.target===$("#mgr"))closeManager();});$("#project").oninput=updateBookInfo;$("#orderDate").onchange=updateBookInfo;render();updateBookInfo();})();
 </script>
 </body>
 </html>
