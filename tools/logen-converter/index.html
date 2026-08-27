@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>로젠 변환기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root{
+    --paper:#F2F3F0; --card:#FFFFFF; --ink:#16181C; --ink-2:#40454B; --muted:#6E736D;
+    --rule:#CDD1C9; --rule-soft:#E2E5DF;
+    --send:#1F5F8B; --send-bg:#E9F0F5;
+    --recv:#2C6349; --recv-bg:#E8F0EA;
+    --signal:#B23A08; --signal-bg:#FBEEE7;
+    --tag:#1F2A37; --tag-bg:#E6E9E4;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#14161A; --card:#1B1E23; --ink:#ECEEEA; --ink-2:#B9BEB8; --muted:#8A908A;
+      --rule:#343941; --rule-soft:#272C33;
+      --send:#7FB6DC; --send-bg:#132330;
+      --recv:#7FCBA4; --recv-bg:#12241C;
+      --signal:#FF8B52; --signal-bg:#2B1810;
+      --tag:#D6DAD4; --tag-bg:#252A31;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#14161A; --card:#1B1E23; --ink:#ECEEEA; --ink-2:#B9BEB8; --muted:#8A908A;
+    --rule:#343941; --rule-soft:#272C33;
+    --send:#7FB6DC; --send-bg:#132330;
+    --recv:#7FCBA4; --recv-bg:#12241C;
+    --signal:#FF8B52; --signal-bg:#2B1810;
+    --tag:#D6DAD4; --tag-bg:#252A31;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+    font-size:15.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:44px 22px 80px}
+
+  header.top{border-bottom:3px solid var(--ink);padding-bottom:16px;margin-bottom:26px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:500;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  h1{font-size:clamp(26px,4.4vw,36px);line-height:1.15;font-weight:700;letter-spacing:-.02em;margin:0}
+  .sub{color:var(--ink-2);margin:11px 0 0;max-width:64ch}
+
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media (max-width:820px){ .panels{grid-template-columns:1fr} }
+
+  .panel{background:var(--card);border:1px solid var(--rule-soft);border-radius:6px;
+    padding:22px 22px 20px;display:flex;flex-direction:column}
+  .panel.send{border-top:4px solid var(--send)}
+  .panel.recv{border-top:4px solid var(--recv)}
+  .flow{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;font-weight:600;margin:0 0 6px}
+  .send .flow{color:var(--send)} .recv .flow{color:var(--recv)}
+  .panel h2{margin:0 0 5px;font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .panel .desc{margin:0 0 16px;font-size:14.5px;color:var(--ink-2)}
+
+  .drop{border:2px dashed var(--rule);border-radius:5px;padding:30px 18px;text-align:center;
+    cursor:pointer;transition:border-color .15s,background .15s;background:var(--paper)}
+  .drop:hover{border-color:var(--muted)}
+  .drop.over{border-style:solid}
+  .send .drop.over{border-color:var(--send);background:var(--send-bg)}
+  .recv .drop.over{border-color:var(--recv);background:var(--recv-bg)}
+  .drop .big{font-size:15.5px;font-weight:600;margin-bottom:5px}
+  .drop .small{font-size:13px;color:var(--muted);line-height:1.55}
+  .drop input{display:none}
+
+  .files{list-style:none;margin:14px 0 0;padding:0}
+  .files li{display:flex;gap:9px;align-items:center;font-family:"IBM Plex Mono",monospace;
+    font-size:12.5px;color:var(--ink-2);padding:5px 0;border-bottom:1px solid var(--rule-soft);
+    word-break:break-all}
+  .files li b{color:var(--ink);font-weight:600}
+  .kind{flex:0 0 auto;font-size:10.5px;letter-spacing:.06em;padding:2px 6px;border-radius:3px;
+    background:var(--tag-bg);color:var(--tag)}
+
+  .status{margin-top:16px;font-size:14.5px;min-height:22px}
+  .status .ok{color:var(--recv);font-weight:500}
+  .status .err{color:var(--signal);font-weight:500}
+  .status .hint{color:var(--muted);font-size:13.5px;display:block;margin-top:4px}
+
+  .actions{margin-top:auto;padding-top:18px;display:flex;gap:9px;flex-wrap:wrap}
+  button.go{font-family:inherit;font-size:14.5px;font-weight:600;border:0;border-radius:4px;
+    padding:11px 17px;cursor:pointer;color:#fff;background:var(--ink)}
+  button.go:disabled{opacity:.35;cursor:default}
+  .send button.go{background:var(--send)} .recv button.go{background:var(--recv)}
+  :root:not([data-theme="light"]) .send button.go,
+  :root:not([data-theme="light"]) .recv button.go{color:#14161A}
+  button.ghost{font-family:inherit;font-size:14px;font-weight:500;border:1px solid var(--rule);
+    background:transparent;color:var(--ink-2);border-radius:4px;padding:11px 15px;cursor:pointer}
+  button.ghost:disabled{opacity:.35;cursor:default}
+
+  .summary{margin-top:14px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;
+    color:var(--ink-2);background:var(--paper);border-radius:4px;padding:11px 13px;
+    white-space:pre-wrap;line-height:1.75;display:none}
+  .summary.on{display:block}
+
+  h3.sect{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);font-weight:600;
+    margin:46px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+  ol.steps{margin:0;padding-left:20px;color:var(--ink-2)}
+  ol.steps li{margin-bottom:7px}
+  ol.steps b{color:var(--ink);font-weight:600}
+  code{font-family:"IBM Plex Mono",monospace;font-size:.92em;font-weight:600;
+    background:var(--tag-bg);color:var(--tag);padding:2px 6px;border-radius:3px}
+
+  .note{background:var(--card);border:1px solid var(--rule-soft);border-left:4px solid var(--signal);
+    padding:14px 17px;border-radius:0 4px 4px 0;margin:18px 0;font-size:14.5px;color:var(--ink-2)}
+  .note b{color:var(--ink)}
+
+  footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);
+    font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">칸트라이팅 · 출고 도구</p>
+  <h1>로젠 변환기</h1>
+  <p class="sub">엑셀 파일을 끌어다 놓으면 상대 시스템 양식으로 바꿔줍니다. 설치할 것도, 업로드되는 것도 없습니다 — 변환은 전부 이 브라우저 안에서만 일어납니다.</p>
+</header>
+
+<div class="panels">
+
+  <!-- ── 이카운트 → 로젠 ── -->
+  <section class="panel send" id="p1">
+    <p class="flow">이카운트 → 로젠</p>
+    <h2>로젠 업로드 파일 만들기</h2>
+    <p class="desc">배송처리 화면에서 <code>Excel</code>로 받은 파일을 넣으면, 로젠 <b>복수건 등록</b>용 D타입 8열 파일이 나옵니다.</p>
+
+    <label class="drop" id="d1">
+      <div class="big">배송처리 Excel 1개</div>
+      <div class="small">끌어다 놓거나 눌러서 선택<br>ESA005E.xlsx</div>
+      <input type="file" id="f1" accept=".xlsx">
+    </label>
+
+    <ul class="files" id="l1"></ul>
+    <div class="status" id="s1"></div>
+    <div class="summary" id="m1"></div>
+
+    <div class="actions">
+      <button class="go" id="b1" disabled>변환해서 내려받기</button>
+    </div>
+  </section>
+
+  <!-- ── 로젠 → 이카운트 ── -->
+  <section class="panel recv" id="p2">
+    <p class="flow">로젠 → 이카운트</p>
+    <h2>송장 등록 파일 만들기</h2>
+    <p class="desc">로젠 송장 출력 파일과 배송처리 Excel을 <b>둘 다</b> 넣으면, 이카운트 <b>웹자료올리기</b>에 붙여넣을 내용이 나옵니다.</p>
+
+    <label class="drop" id="d2">
+      <div class="big">파일 2개</div>
+      <div class="small">배송처리 Excel + 로젠 송장 출력 파일<br>순서는 상관없습니다</div>
+      <input type="file" id="f2" accept=".xlsx" multiple>
+    </label>
+
+    <ul class="files" id="l2"></ul>
+    <div class="status" id="s2"></div>
+    <div class="summary" id="m2"></div>
+
+    <div class="actions">
+      <button class="go" id="b2" disabled>클립보드에 복사</button>
+      <button class="ghost" id="b2d" disabled>파일로 내려받기</button>
+    </div>
+  </section>
+
+</div>
+
+<h3 class="sect">쓰는 순서</h3>
+<ol class="steps">
+  <li>이카운트 <b>배송처리</b> 화면에서 <code>Excel</code> 버튼으로 파일을 받습니다.</li>
+  <li>왼쪽 칸에 넣고 <b>로젠 업로드 파일</b>을 받습니다. 주문이 묶음 단위로 접혀 <b>상자 1개 = 1행</b>이 됩니다.</li>
+  <li>로젠 프로그램 <b>주문등록 › 복수건 등록</b>에 그 파일을 올리고 송장을 출력합니다.</li>
+  <li>로젠 출력 파일과 1번의 배송처리 Excel을 <b>오른쪽 칸에 함께</b> 넣습니다.</li>
+  <li><b>클립보드에 복사</b>를 누르고, 이카운트 <b>배송처리 › 웹자료올리기</b> 첫 칸에 붙여넣은 뒤 저장(F8).</li>
+</ol>
+
+<div class="note">
+  <b>로젠에 접수할 때 A열(주문번호)이 그대로 살아 있어야 합니다.</b>
+  거기 담긴 묶음주문번호가 송장 출력 파일로 돌아와야 어느 송장이 어느 주문인지 맞출 수 있습니다.
+  로젠 <code>엑셀타입설정</code>에서 A열이 <code>주문번호</code>로 잡혀 있는지 확인하세요.
+  <br><br>
+  <b>대신택배 건은 이 도구를 쓰지 않습니다.</b> 수기 접수 후 이카운트 배송처리에 <code>DAESIN</code> 코드로 직접 입력하세요.
+</div>
+
+<footer>변환은 브라우저 안에서만 실행됩니다 · 고객 정보가 서버로 전송되지 않습니다</footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* ─────────────────────────────────────────────────────────
+   XLSX 읽기 / 쓰기 — 외부 라이브러리 없이
+   xlsx는 zip이다. 브라우저의 DecompressionStream으로 풀고,
+   쓸 때는 압축하지 않는(stored) zip으로 만든다.
+   ───────────────────────────────────────────────────────── */
+
+const td = new TextDecoder();
+
+async function unzip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  // 끝에서 EOCD(End Of Central Directory) 서명을 찾는다
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= 0 && i > u8.length - 66000; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('엑셀 파일이 아닙니다');
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const out = {};
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true);
+    const csize  = dv.getUint32(p + 20, true);
+    const nlen   = dv.getUint16(p + 28, true);
+    const elen   = dv.getUint16(p + 30, true);
+    const clen   = dv.getUint16(p + 32, true);
+    const lho    = dv.getUint32(p + 42, true);
+    const name   = td.decode(u8.subarray(p + 46, p + 46 + nlen));
+    // 로컬 헤더에서 실제 데이터 위치를 다시 계산한다
+    const lnlen = dv.getUint16(lho + 26, true);
+    const lelen = dv.getUint16(lho + 28, true);
+    const start = lho + 30 + lnlen + lelen;
+    const raw = u8.subarray(start, start + csize);
+    out[name] = method === 0 ? raw : await inflateRaw(raw);
+    p += 46 + nlen + elen + clen;
+  }
+  return out;
+}
+
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream !== 'function')
+    throw new Error('이 브라우저는 지원하지 않습니다. 크롬이나 엣지 최신 버전을 쓰세요.');
+  const ds = new DecompressionStream('deflate-raw');
+  const blob = new Blob([bytes]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(blob).arrayBuffer());
+}
+
+/* 시트를 [[셀,…],…] 로 읽는다 */
+function readSheet(files) {
+  const shared = [];
+  const ss = files['xl/sharedStrings.xml'];
+  if (ss) {
+    const doc = new DOMParser().parseFromString(td.decode(ss), 'application/xml');
+    for (const si of doc.getElementsByTagName('si')) {
+      let s = '';
+      for (const t of si.getElementsByTagName('t')) s += t.textContent;
+      shared.push(s);
+    }
+  }
+  const key = Object.keys(files).find(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k));
+  if (!key) throw new Error('시트를 찾을 수 없습니다');
+  const doc = new DOMParser().parseFromString(td.decode(files[key]), 'application/xml');
+  const rows = [];
+  for (const row of doc.getElementsByTagName('row')) {
+    const arr = [];
+    for (const c of row.getElementsByTagName('c')) {
+      const ref = c.getAttribute('r') || '';
+      const col = colIndex(ref.replace(/\d+/g, ''));
+      const t = c.getAttribute('t');
+      let v = '';
+      if (t === 'inlineStr') {
+        for (const x of c.getElementsByTagName('t')) v += x.textContent;
+      } else {
+        const el = c.getElementsByTagName('v')[0];
+        if (el) v = t === 's' ? (shared[+el.textContent] || '') : el.textContent;
+      }
+      while (arr.length < col) arr.push('');
+      arr[col] = (v || '').trim();
+    }
+    rows.push(arr);
+  }
+  return rows;
+}
+
+function colIndex(letters) {
+  let n = 0;
+  for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64);
+  return n - 1;
+}
+
+/* 머리글 행을 찾아 [{열이름: 값}] 로 바꾼다.
+   이카운트는 1행이 '회사명 …', 로젠은 머리글이 2행에 걸쳐 있다. */
+function toTable(rows, need) {
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (!need.every(k => r.some(c => c === k))) continue;
+    let hdr = r.slice(), start = i + 1;
+    if (start < rows.length && isSubHeader(rows[start])) {
+      const sub = rows[start];
+      const len = Math.max(hdr.length, sub.length);
+      const merged = [];
+      for (let j = 0; j < len; j++) merged.push((sub[j] && sub[j] !== '') ? sub[j] : (hdr[j] || ''));
+      hdr = merged; start++;
+    }
+    const table = [];
+    for (let k = start; k < rows.length; k++) {
+      const r2 = rows[k], d = {};
+      let any = false;
+      for (let j = 0; j < hdr.length; j++) {
+        const name = hdr[j];
+        if (!name) continue;
+        const val = r2[j] === undefined ? '' : r2[j];
+        if (!(name in d)) d[name] = val;      // 이름이 겹치면 먼저 나온 쪽(수하인)을 남긴다
+        if (val !== '') any = true;
+      }
+      if (any) table.push(d);
+    }
+    return table;
+  }
+  throw new Error('필요한 열을 못 찾았습니다: ' + need.join(', '));
+}
+
+/* 실데이터에는 운송장번호·주문번호 같은 긴 숫자가 있다. 없으면 머리글 둘째 lines_n. */
+function isSubHeader(r) { return !r.some(c => /\d{5,}/.test(c || '')); }
+
+function cleanNo(v) {
+  v = (v || '').trim();
+  if (/^\d+\.\d+E\+\d+$/i.test(v)) return String(Math.round(Number(v)));
+  return /^\d+\.0$/.test(v) ? v.split('.')[0] : v;
+}
+
+/* ── 최소 xlsx 쓰기 (압축 없이 저장) ── */
+function crc32(u8) {
+  let c, t = crc32.t;
+  if (!t) {
+    t = crc32.t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+  }
+  c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = t[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function makeZip(entries) {
+  const enc = new TextEncoder(), locals = [], central = [];
+  let offset = 0;
+  for (const [name, text] of entries) {
+    const nameB = enc.encode(name), data = enc.encode(text), crc = crc32(data);
+    const lh = new Uint8Array(30 + nameB.length), lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true);
+    lv.setUint16(8, 0, true);                        // 압축 없음(stored)
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameB.length, true);
+    lh.set(nameB, 30);
+    locals.push(lh, data);
+
+    const ch = new Uint8Array(46 + nameB.length), cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameB.length, true);
+    cv.setUint32(42, offset, true);
+    ch.set(nameB, 46);
+    central.push(ch);
+    offset += lh.length + data.length;
+  }
+  const cdSize = central.reduce((a, b) => a + b.length, 0);
+  const eocd = new Uint8Array(22), ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, entries.length, true); ev.setUint16(10, entries.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+  return new Blob([...locals, ...central, eocd],
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+const xmlEsc = s => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+
+function sheetXml(rows, widths) {
+  const colLetter = n => { let s = ''; n++; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; } return s; };
+  let cols = '';
+  if (widths) {
+    cols = '<cols>' + widths.map((w, i) =>
+      `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') + '</cols>';
+  }
+  const body = rows.map((r, ri) =>
+    `<row r="${ri + 1}">` + r.map((v, ci) => {
+      if (v === '' || v == null) return '';
+      const ref = colLetter(ci) + (ri + 1);
+      if (typeof v === 'number')
+        return `<c r="${ref}"><v>${v}</v></c>`;
+      return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+    }).join('') + '</row>').join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${cols}<sheetData>${body}</sheetData></worksheet>`;
+}
+
+function makeXlsx(rows, widths, sheetName) {
+  return makeZip([
+    ['[Content_Types].xml',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`],
+    ['_rels/.rels',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xmlEsc(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`],
+    ['xl/worksheets/sheet1.xml', sheetXml(rows, widths)]
+  ]);
+}
+
+/* ─────────────────────────────────────────────────────────
+   변환 로직
+   ───────────────────────────────────────────────────────── */
+
+const MALL_CODE = '00001';
+const LOGEN_COLS = ['주문번호','수하인명','수하인주소1','수하인전화','수하인휴대폰','택배수량','물품명','배송메세지'];
+
+function itemLabel(lines, limit) {
+  const labels = lines.map(r => {
+    const nm = (r['품목명(ERP)'] || '').trim() || (r['쇼핑몰상품명'] || '').trim();
+    const q = (r['수량'] || '').trim();
+    return (q && q !== '1' && q !== '1.0') ? `${nm} x${q.replace(/\.0$/, '')}` : nm;
+  });
+  const joined = labels.join(', ');
+  if (joined.length <= limit) return joined;
+  return `${labels[0].slice(0, limit)} 외 ${labels.length - 1}건`;
+}
+
+/* ① 배송처리 → 로젠 D타입 */
+function buildLogen(rows) {
+  const table = toTable(rows, ['묶음주문번호', '수취인']);
+  const bundles = new Map();
+  let skipped = 0;
+  for (const r of table) {
+    const bundle = cleanNo(r['묶음주문번호']);
+    if (!bundle) continue;
+    if ((r['송장번호'] || '').trim()) { skipped++; continue; }
+    if (!bundles.has(bundle)) bundles.set(bundle, []);
+    bundles.get(bundle).push(r);
+  }
+  const out = [LOGEN_COLS.slice()];
+  let multi = 0;
+  for (const [bundle, lines] of bundles) {
+    if (lines.length > 1) multi++;
+    const head0 = lines[0];
+    const tel = (head0['수취인연락처1'] || '').trim();
+    const tel2 = (head0['수취인연락처2'] || '').trim();
+    const mobile = tel2 || (/^01[016789]/.test(tel.replace(/\D/g, '')) ? tel : '');
+    out.push([bundle, head0['수취인'] || '', head0['주소'] || '', tel, mobile, 1,
+              itemLabel(lines, 45), head0['배송요청사항'] || '']);
+  }
+  return { rows: out, boxes: bundles.size, multi, skipped };
+}
+
+/* ② 배송처리 + 로젠 출력 → 이카운트 송장 TSV */
+function buildWaybill(shipRows, logenRows, code) {
+  const ship = toTable(shipRows, ['묶음주문번호', '수취인']);
+  const logen = toTable(logenRows, ['운송장번호'])
+    .filter(r => /^\d{8,}$/.test((r['운송장번호'] || '').trim()));
+  const byNo = new Map();
+  for (const r of logen) {
+    const k = cleanNo(r['주문번호']);
+    if (k) byNo.set(k, r['운송장번호'].trim());
+  }
+  const firstOf = new Map();
+  for (const r of ship) {
+    const b = cleanNo(r['묶음주문번호']);
+    if (b && !firstOf.has(b)) firstOf.set(b, r);
+  }
+  const out = [], unmatched = new Set();
+  for (const r of ship) {
+    const bundle = cleanNo(r['묶음주문번호']);
+    const orderNo = cleanNo(r['주문번호']);
+    if (!bundle || !orderNo) continue;
+    const wb = byNo.get(bundle);
+    if (wb) out.push([MALL_CODE, orderNo, bundle, code, wb]);
+    else unmatched.add(bundle + '\t' + ((firstOf.get(bundle) || {})['수취인'] || ''));
+  }
+  return {
+    tsv: out.map(r => r.join('\t')).join('\n'),
+    lines_n: out.length,
+    boxes: new Set(out.map(r => r[2])).size,
+    logenN: logen.length,
+    withNo: byNo.size,
+    unmatched: [...unmatched].map(s => s.split('\t'))
+  };
+}
+
+/* ─────────────────────────────────────────────────────────
+   화면
+   ───────────────────────────────────────────────────────── */
+
+const $ = id => document.getElementById(id);
+
+function dropzone(zoneId, inputId, multiple, onFiles) {
+  const zone = $(zoneId), input = $(inputId);
+  const stop = e => { e.preventDefault(); e.stopPropagation(); };
+  ['dragenter', 'dragover'].forEach(t => zone.addEventListener(t, e => { stop(e); zone.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => zone.addEventListener(t, e => { stop(e); zone.classList.remove('over'); }));
+  zone.addEventListener('drop', e => {
+    const fs = [...e.dataTransfer.files].filter(f => /\.xlsx$/i.test(f.name));
+    if (fs.length) onFiles(multiple ? fs : [fs[0]]);
+  });
+  input.addEventListener('change', () => {
+    const fs = [...input.files].filter(f => /\.xlsx$/i.test(f.name));
+    if (fs.length) onFiles(multiple ? fs : [fs[0]]);
+  });
+}
+
+function say(el, cls, msg, hint) {
+  el.innerHTML = `<span class="${cls}">${msg}</span>` + (hint ? `<span class="hint">${hint}</span>` : '');
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+/* ── 왼쪽 ── */
+let shipRows1 = null;
+dropzone('d1', 'f1', false, async files => {
+  const f = files[0];
+  $('l1').innerHTML = `<li><span class="kind">배송처리</span><b>${f.name}</b></li>`;
+  $('m1').classList.remove('on');
+  try {
+    shipRows1 = readSheet(await unzip(await f.arrayBuffer()));
+    toTable(shipRows1, ['묶음주문번호', '수취인']);      // 형식 확인
+    say($('s1'), 'ok', '읽었습니다. 변환 버튼을 누르세요.');
+    $('b1').disabled = false;
+  } catch (e) {
+    shipRows1 = null; $('b1').disabled = true;
+    say($('s1'), 'err', '이 파일은 배송처리 Excel이 아닙니다.', e.message);
+  }
+});
+
+$('b1').addEventListener('click', () => {
+  try {
+    const r = buildLogen(shipRows1);
+    if (!r.boxes) { say($('s1'), 'err', '보낼 주문이 없습니다.', '이미 송장이 있는 줄만 들어 있습니다.'); return; }
+    download(makeXlsx(r.rows, [20, 12, 46, 16, 16, 8, 40, 30], '로젠업로드'), '로젠업로드.xlsx');
+    say($('s1'), 'ok', `상자 ${r.boxes}건 → 로젠업로드.xlsx`);
+    let m = `상자(묶음주문)   ${r.boxes}건\n`;
+    if (r.multi) m += `여러 품목 주문   ${r.multi}건 — 물품명을 합쳤습니다\n`;
+    if (r.skipped) m += `이미 송장 있음   ${r.skipped}줄 제외\n`;
+    m += `택배수량은 전부 1입니다. 두 상자로 나갈 건은 직접 고치세요.`;
+    $('m1').textContent = m; $('m1').classList.add('on');
+  } catch (e) { say($('s1'), 'err', '변환 실패', e.message); }
+});
+
+/* ── 오른쪽 ── */
+let shipRows2 = null, logenRows2 = null, tsv2 = '';
+dropzone('d2', 'f2', true, async files => {
+  $('m2').classList.remove('on'); tsv2 = '';
+  $('b2').disabled = $('b2d').disabled = true;
+  shipRows2 = logenRows2 = null;
+  const listed = [];
+  try {
+    for (const f of files.slice(0, 4)) {
+      const rows = readSheet(await unzip(await f.arrayBuffer()));
+      const flat = rows.slice(0, 6).flat();
+      if (flat.includes('운송장번호'))      { logenRows2 = rows; listed.push(['로젠 출력', f.name]); }
+      else if (flat.includes('묶음주문번호')) { shipRows2 = rows; listed.push(['배송처리', f.name]); }
+      else listed.push(['알 수 없음', f.name]);
+    }
+    $('l2').innerHTML = listed.map(([k, n]) =>
+      `<li><span class="kind">${k}</span><b>${n}</b></li>`).join('');
+    if (shipRows2 && logenRows2) {
+      say($('s2'), 'ok', '두 파일 다 읽었습니다.');
+      $('b2').disabled = $('b2d').disabled = false;
+    } else {
+      say($('s2'), 'err', '아직 부족합니다.',
+        (shipRows2 ? '로젠 송장 출력 파일' : '배송처리 Excel') + '을 같이 넣어주세요.');
+    }
+  } catch (e) { say($('s2'), 'err', '파일을 읽지 못했습니다.', e.message); }
+});
+
+function build2() {
+  const r = buildWaybill(shipRows2, logenRows2, 'KGB');
+  tsv2 = r.tsv;
+  let m = `로젠 송장        ${r.logenN}건\n`;
+  m += `그중 주문번호 있음 ${r.withNo}건\n`;
+  m += `붙여넣을 줄       ${r.lines_n}줄 (상자 ${r.boxes}건)\n`;
+  if (r.unmatched.length) {
+    m += `\n⚠ 송장을 못 찾은 상자 ${r.unmatched.length}건\n`;
+    m += r.unmatched.slice(0, 8).map(([b, n]) => `   ${b}  ${n}`).join('\n');
+    if (r.unmatched.length > 8) m += `\n   … 외 ${r.unmatched.length - 8}건`;
+    m += `\n\n로젠 A열(주문번호)에 묶음주문번호를 넣고 접수해야 매칭됩니다.`;
+  }
+  if (r.lines_n > 300) m += `\n\n⚠ 300줄이 넘습니다. 이카운트는 한 번에 300건까지라 나눠서 붙여넣으세요.`;
+  $('m2').textContent = m; $('m2').classList.add('on');
+  return r;
+}
+
+$('b2').addEventListener('click', async () => {
+  try {
+    const r = build2();
+    if (!r.lines_n) { say($('s2'), 'err', '매칭된 송장이 없습니다.', '로젠 출력 파일에 주문번호가 비어 있습니다.'); return; }
+    await navigator.clipboard.writeText(tsv2);
+    say($('s2'), 'ok', `${r.lines_n}줄 복사했습니다.`, '이카운트 배송처리 › 웹자료올리기 첫 칸에 붙여넣고 저장(F8)');
+  } catch (e) {
+    say($('s2'), 'err', '복사하지 못했습니다.', (e && e.message) + ' — 파일로 내려받아 쓰세요.');
+  }
+});
+
+$('b2d').addEventListener('click', () => {
+  try {
+    const r = build2();
+    if (!r.lines_n) { say($('s2'), 'err', '매칭된 송장이 없습니다.', '로젠 출력 파일에 주문번호가 비어 있습니다.'); return; }
+    download(new Blob([tsv2], { type: 'text/plain;charset=utf-8' }), '송장업로드.txt');
+    say($('s2'), 'ok', `${r.lines_n}줄 → 송장업로드.txt`);
+  } catch (e) { say($('s2'), 'err', '변환 실패', e.message); }
+});
+</script>
+
+</body>
+</html>
