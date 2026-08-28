@@ -10,14 +10,20 @@
  *    name        : 툴 이름 (카드 제목)
  *    description : 한 줄 설명 (직원이 무슨 툴인지 바로 알 수 있게)
  *    path        : 툴 폴더 경로 (예: "tools/color-picker/")
+ *    category    : 화면 섹션 (아래 CATEGORIES 중 하나). 빠뜨리면 "기타"로 갑니다.
  *    tags        : 분류 태그 배열 (검색·필터에 사용)  예: ["디자인", "마케팅"]
  *    owner       : 담당자 / 만든 사람 (선택)
  *    updated     : 마지막 수정일 "YYYY-MM-DD" (선택)
  * ============================================================= */
 
+/*  화면에 보이는 섹션 순서 (위 → 아래).
+ *  새 섹션이 필요하면 여기에 한 줄 추가하고, 툴의 category 를 같은 이름으로 적으세요.  */
+window.TOOL_CATEGORIES = ["발주 · 출고", "변환기", "제품 툴"];
+
 window.TOOLS = [
   {
     name: "발주 시스템",
+    category: "발주 · 출고",
     description: "제품별 수량만 입력하면 발주서 엑셀을 자동 생성하는 발주 프로그램 (공장별 탭·발주 기록 저장).",
     path: "tools/order-system/",
     tags: ["발주", "구매", "엑셀", "제품"],
@@ -26,6 +32,7 @@ window.TOOLS = [
   },
   {
     name: "융스위치 단가",
+    category: "제품 툴",
     description: "색상·구 수·기능 모듈을 조합하면 단가를 자동 계산해 주는 툴입니다.",
     path: "tools/jung-switch/",
     tags: ["융", "스위치", "모듈", "단가"],
@@ -34,6 +41,7 @@ window.TOOLS = [
   },
 {
     name: "마그네틱 레일 계산기",
+    category: "제품 툴",
     description: "설치 길이·형상을 넣으면 필요한 레일 조합·절단 계획·부속품·안정기를 자동 계산합니다.",
     path: "tools/rail-calculator/",
     tags: ["시공", "견적", "계산기", "조명"],
@@ -42,6 +50,7 @@ window.TOOLS = [
   },
   {
     name: "T3 설치 계산기",
+    category: "제품 툴",
     description: "설치 길이·형상을 넣으면 여유 최소화 기준으로 T3 조명 조합(추천+대안)을 자동 계산합니다.",
     path: "tools/t3-calculator/",
     tags: ["시공", "견적", "계산기", "조명"],
@@ -50,6 +59,7 @@ window.TOOLS = [
   },
 {
     name: "인보이스 변환기",
+    category: "변환기",
     description: "인보이스 엑셀(.xlsx)을 업로드하면, 제품 목록 엑셀로 변환해 주는 툴입니다.",
     path: "tools/invoice-converter/",
     tags: ["인보이스", "엑셀", "변환", "환율"],
@@ -60,6 +70,7 @@ window.TOOLS = [
 
   {
     name: "로젠 변환기",
+    category: "변환기",
     description: "이카운트 배송처리 엑셀 ↔ 로젠 송장 파일을 서로의 양식으로 변환합니다. 드래그 앤 드롭 한 번이면 끝.",
     path: "tools/logen-converter/",
     tags: ["출고", "택배", "엑셀", "변환", "이카운트"],
@@ -69,7 +80,8 @@ window.TOOLS = [
 
   {
     name: "스위치 구성기",
-    description: "융·리드미카·다이아·갈리온·아테오·아펠라 6개 브랜드를 색상·구 수·칸별 기능으로 조합하면 실물 그림과 소비자가가 실시간으로 나옵니다. 여러 브랜드를 한 견적 요청서로 묶어 이미지로 저장합니다.",
+    category: "제품 툴",
+    description: "6개 브랜드 스위치를 색상·구 수·칸별 기능으로 조합하면 실물 그림과 금액이 실시간으로 나오고, 견적 요청서까지 만듭니다.",
     path: "tools/switch-configurator/",
     tags: ["스위치", "견적", "구성기", "조명", "소비자가"],
     owner: "KANT",

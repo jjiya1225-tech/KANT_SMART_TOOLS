@@ -75,6 +75,23 @@
     display: grid; gap: 16px;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
+
+  /* 카테고리 섹션 */
+  .section { margin-bottom: 40px; }
+  .section:last-child { margin-bottom: 0; }
+  .sec-head {
+    display: flex; align-items: baseline; gap: 10px;
+    margin: 0 0 14px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sec-head h2 {
+    margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+    text-transform: none;
+  }
+  .sec-head .n {
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
+  }
   .card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column;
@@ -121,7 +138,7 @@
 
   <div class="tags-bar" id="tags"></div>
 
-  <div class="grid" id="grid"></div>
+  <div id="sections"></div>
   <div class="empty" id="empty" style="display:none">검색 결과가 없습니다.</div>
 
   <footer class="page">
@@ -141,7 +158,8 @@
   })();
   function init() {
   const TOOLS = (window.TOOLS || []).slice();
-  const grid = document.getElementById('grid');
+  const sections = document.getElementById('sections');
+  const CATS = (window.TOOL_CATEGORIES || []).slice();
   const empty = document.getElementById('empty');
   const countEl = document.getElementById('count');
   const totalEl = document.getElementById('total');
@@ -180,22 +198,46 @@
       return matchTag && matchQ;
     });
     countEl.textContent = list.length + '개 표시 중';
-    grid.innerHTML = '';
+    sections.innerHTML = '';
     empty.style.display = list.length ? 'none' : 'block';
+
+    // CATEGORIES 순서대로, 목록에 없는 카테고리는 뒤에 붙이고, 없는 툴은 '기타'로
+    const order = CATS.slice();
     list.forEach(t => {
-      const a = document.createElement('a');
-      a.className = 'card';
-      a.href = t.path;
-      const tags = (t.tags||[]).map(x => `<span class="tag">${esc(x)}</span>`).join('');
-      a.innerHTML = `
-        <h3>${esc(t.name)}</h3>
-        <p class="desc">${esc(t.description||'')}</p>
-        <div class="meta">${tags}</div>
-        <div class="foot">
-          <span>${t.owner ? '👤 ' + esc(t.owner) : ''}${t.updated ? ' · ' + esc(t.updated) : ''}</span>
-          <span class="open">열기 →</span>
-        </div>`;
-      grid.appendChild(a);
+      const c = t.category || '기타';
+      if (order.indexOf(c) === -1) order.push(c);
+    });
+
+    order.forEach(cat => {
+      const items = list.filter(t => (t.category || '기타') === cat);
+      if (!items.length) return;               // 검색·필터로 빈 섹션은 감춘다
+
+      const sec = document.createElement('section');
+      sec.className = 'section';
+      const head = document.createElement('div');
+      head.className = 'sec-head';
+      head.innerHTML = `<h2>${esc(cat)}</h2><span class="n">${items.length}</span>`;
+      sec.appendChild(head);
+
+      const g = document.createElement('div');
+      g.className = 'grid';
+      items.forEach(t => {
+        const a = document.createElement('a');
+        a.className = 'card';
+        a.href = t.path;
+        const tags = (t.tags||[]).map(x => `<span class="tag">${esc(x)}</span>`).join('');
+        a.innerHTML = `
+          <h3>${esc(t.name)}</h3>
+          <p class="desc">${esc(t.description||'')}</p>
+          <div class="meta">${tags}</div>
+          <div class="foot">
+            <span>${t.owner ? '👤 ' + esc(t.owner) : ''}${t.updated ? ' · ' + esc(t.updated) : ''}</span>
+            <span class="open">열기 →</span>
+          </div>`;
+        g.appendChild(a);
+      });
+      sec.appendChild(g);
+      sections.appendChild(sec);
     });
   }
 
