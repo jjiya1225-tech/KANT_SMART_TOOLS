@@ -115,6 +115,33 @@
 
   footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);
     font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+
+/* ── 보낼 상자 고르기 ── */
+.picker{display:none;margin:14px 0 0}
+.picker.on{display:block}
+.picker .head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.picker .head b{font-size:13.5px}
+.picker .head .n{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.picker .head button{margin-left:auto;font:inherit;font-size:12.5px;cursor:pointer;
+  background:none;border:1px solid var(--line2);color:var(--muted);
+  border-radius:99px;padding:3px 11px}
+.picker .head button:hover{color:var(--ink)}
+.picker .list{max-height:320px;overflow-y:auto;margin:0;padding:0;list-style:none}
+.picker .list li{display:flex;gap:9px;align-items:flex-start;padding:7px 2px;
+  border-bottom:1px solid var(--line)}
+.picker .list li:last-child{border-bottom:none}
+.picker .list input{margin:3px 0 0;flex:none;width:15px;height:15px;cursor:pointer}
+.picker .list .who{font-size:13.5px;font-weight:500}
+.picker .list .sub{font-size:12px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.picker .list li.off .who,.picker .list li.off .sub{opacity:.42;text-decoration:line-through}
+.picker .list .body{min-width:0;flex:1}
+.picker .why{font-size:11.5px;color:#B4771A;margin-top:1px;font-weight:500}
+.picker .list .memo{color:#B4771A;white-space:normal}
+.picker .list .tel{font-weight:400;color:var(--muted);font-size:12.5px}
+.picker .list i{color:#A63A38;font-style:normal}
+.picker .hint{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 </style>
 </head>
 <body>
@@ -134,16 +161,18 @@
   <section class="panel send" id="p1">
     <p class="flow">이카운트 → 로젠</p>
     <h2>로젠 업로드 파일 만들기</h2>
-    <p class="desc">배송처리 화면에서 <code>Excel</code>로 받은 파일을 넣으면, 로젠 <b>복수건 등록</b>용 D타입 8열 파일이 나옵니다.</p>
+    <p class="desc">이카운트에서 받은 <code>Excel</code>을 넣으면 로젠 <b>복수건 등록</b>용 D타입 8열 파일이 나옵니다.
+    <b>배송처리</b>와 <b>판매조회</b> 두 양식 다 됩니다 — 어느 쪽인지는 알아서 가려냅니다.</p>
 
     <label class="drop" id="d1">
-      <div class="big">배송처리 Excel 1개</div>
-      <div class="small">끌어다 놓거나 눌러서 선택<br>ESA005E.xlsx</div>
+      <div class="big">이카운트 Excel 1개</div>
+      <div class="small">끌어다 놓거나 눌러서 선택<br>배송처리(ESA005E) 또는 판매조회</div>
       <input type="file" id="f1" accept=".xlsx">
     </label>
 
     <ul class="files" id="l1"></ul>
     <div class="status" id="s1"></div>
+    <div class="picker" id="pick1"></div>
     <div class="summary" id="m1"></div>
 
     <div class="actions">
@@ -441,29 +470,150 @@ function itemLabel(lines, limit) {
 }
 
 /* ① 배송처리 → 로젠 D타입 */
-function buildLogen(rows) {
+/* 배송처리 엑셀에 배송방법이 적혀 있으면 로젠이 아닌 건을 미리 걸러 준다.
+   열 이름이 회사마다 달라서 '배송방법'·'택배사'가 들어간 열을 찾아 쓴다. */
+function shipWayKey(r) {
+  for (const k of Object.keys(r)) if (/배송방법|택배사|배송사/.test(k)) return k;
+  return null;
+}
+function notLogen(r) {
+  const k = shipWayKey(r);
+  if (k) {
+    const v = (r[k] || '').trim();
+    if (v && !/로젠|KGB/i.test(v)) return '배송방법이 «' + v + '»';
+  }
+  // 배송처리 단계에서는 배송방법이 대개 비어 있다. 실제 신호는 배송요청사항에 적힌다.
+  // 예) "대신화물 평택모곡점으로 발송해주세요"
+  const memo = (r['배송요청사항'] || '').trim();
+  if (memo) {
+    const m = memo.match(/대신|경동|합짐|화물|직발송|직배송|방문\s*수령|퀵|용달|착불|기사님|직접\s*수령/);
+    if (m) return '요청사항에 «' + m[0] + '»';
+  }
+  return '';
+}
+
+/* 상자 단위 목록 — 화면에서 골라 빼라고 보여주는 것.
+   두 가지 파일을 다 받는다.
+     · 배송처리 Excel  — 수취인·주소·전화가 따로 열로 있다
+     · 판매조회 Excel  — 그 정보가 '비고' 한 칸에 손으로 적혀 있다 */
+
+function isSalesSheet(rows) {
+  const flat = rows.slice(0, 6).flat().map(x => String(x == null ? '' : x));
+  return flat.some(c => /일자-No/.test(c)) && flat.some(c => c.trim() === '비고');
+}
+
+/* ── 비고 한 줄 풀기 ──
+   실제로 이렇게 적혀 있다.
+     로젠 -43 / 무노디자인 / 010-8602-8729 / 서울특별시 성동구 무학로 50 …
+     [AS/맞교환] 대신 +10 / 김희승님 / 010-7301-0311 / 경기도 … / 문 앞에 놓아주세요
+   손으로 쓴 글이라 완벽하지 않다. 그래서 푼 결과를 화면에 다 보여주고 사람이 보게 한다. */
+const PHONE = /01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}|0\d{1,2}[-\s.]?\d{3,4}[-\s.]?\d{4}/;
+const ADDRISH = /(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)|[0-9]+(동|호|층)|(로|길)\s*\d/;
+
+function parseMemo(memo) {
+  const raw = (memo || '').trim();
+  const out = { who: '', tel: '', addr: '', note: '', courier: '', ourNo: '', raw };
+  if (!raw) { out.why = '비고가 비어 있습니다'; return out; }
+
+  let t = raw.replace(/\[[^\]]*\]/g, ' ')          // [AS/맞교환] 같은 앞머리표
+             .replace(/[★#]/g, ' ')
+             .replace(/\/{2,}/g, '/')              // '//' 오타
+             .trim();
+
+  const cm = t.match(/(로젠|대신|퀵|경동|합짐|용달)\s*([+-]?\s*\d+)?/);
+  if (cm) {
+    out.courier = cm[1];
+    out.ourNo = (cm[2] || '').replace(/\s/g, '');
+    t = t.replace(cm[0], ' ');
+  }
+
+  const parts = t.split('/').map(x => x.trim()).filter(Boolean);
+  const rest = [];
+  for (const part of parts) {
+    const ph = part.match(PHONE);
+    if (ph && !out.tel) {
+      out.tel = ph[0].replace(/[\s.]/g, '');
+      const left = part.replace(ph[0], '').trim();   // "안새봄 010-…" 처럼 붙어 있는 경우
+      if (left && !out.who) out.who = left;
+      continue;
+    }
+    if (!out.addr && ADDRISH.test(part) && part.length >= 8) { out.addr = part; continue; }
+    rest.push(part);
+  }
+  if (!out.who && rest.length) out.who = rest.shift();
+  out.note = rest.join(' / ');
+
+  // 왜 미심쩍은지 — 여기 값이 있으면 미리 체크를 빼고 이유를 보여준다
+  if (/반품|취소|오류/.test(raw)) out.why = '반품·취소 건으로 보입니다';
+  else if (out.courier && out.courier !== '로젠') out.why = '«' + out.courier + '» 이라고 적혀 있습니다';
+  else if (!out.courier) out.why = '택배사가 안 적혀 있습니다';
+  else if (!out.addr) out.why = '주소를 못 찾았습니다';
+  else if (!out.tel) out.why = '전화번호를 못 찾았습니다';
+  return out;
+}
+
+function boxesOfSales(rows) {
+  const table = toTable(rows, ['일자-No.', '비고']);
+  const out = [];
+  for (const r of table) {
+    const no = (r['일자-No.'] || '').trim();
+    if (!no) continue;
+    const p = parseMemo(r['비고']);
+    out.push({
+      bundle: no.replace(/[^\d-]/g, '').replace(/^-+/, ''),   // 2026/08/31 -92 → 20260831-92
+      slip: no,
+      who: p.who, addr: p.addr, tel: p.tel, tel2: '',
+      item: (r['품목명'] || '').trim(),
+      memo: p.note, raw: p.raw, ourNo: p.ourNo,
+      why: p.why || ''
+    });
+  }
+  return out;
+}
+
+function boxesOfShip(rows) {
   const table = toTable(rows, ['묶음주문번호', '수취인']);
-  const bundles = new Map();
-  let skipped = 0;
+  const m = new Map();
   for (const r of table) {
     const bundle = cleanNo(r['묶음주문번호']);
     if (!bundle) continue;
-    if ((r['송장번호'] || '').trim()) { skipped++; continue; }
-    if (!bundles.has(bundle)) bundles.set(bundle, []);
-    bundles.get(bundle).push(r);
+    if ((r['송장번호'] || '').trim()) continue;     // 이미 나간 건은 애초에 안 보여준다
+    if (!m.has(bundle)) {
+      const tel = (r['수취인연락처1'] || '').trim();
+      const tel2 = (r['수취인연락처2'] || '').trim();
+      m.set(bundle, {
+        bundle,
+        who: (r['수취인'] || '').trim(),
+        addr: (r['주소'] || '').trim(),
+        tel,
+        tel2: tel2 || (/^01[016789]/.test(tel.replace(/\D/g, '')) ? tel : ''),
+        memo: (r['배송요청사항'] || '').trim(),
+        why: notLogen(r),
+        lines: []
+      });
+    }
+    m.get(bundle).lines.push(r);
   }
+  const out = [...m.values()];
+  for (const b of out) b.item = itemLabel(b.lines, 60);
+  return out;
+}
+
+function boxesOf(rows) {
+  return isSalesSheet(rows) ? boxesOfSales(rows) : boxesOfShip(rows);
+}
+
+/* 고른 상자로 로젠 D타입 8열 파일을 만든다 */
+function buildLogen(boxes, excluded) {
+  const use = boxes.filter(b => !excluded || !excluded.has(b.bundle));
   const out = [LOGEN_COLS.slice()];
   let multi = 0;
-  for (const [bundle, lines] of bundles) {
-    if (lines.length > 1) multi++;
-    const head0 = lines[0];
-    const tel = (head0['수취인연락처1'] || '').trim();
-    const tel2 = (head0['수취인연락처2'] || '').trim();
-    const mobile = tel2 || (/^01[016789]/.test(tel.replace(/\D/g, '')) ? tel : '');
-    out.push([bundle, head0['수취인'] || '', head0['주소'] || '', tel, mobile, 1,
-              itemLabel(lines, 45), head0['배송요청사항'] || '']);
+  for (const b of use) {
+    if (b.lines && b.lines.length > 1) multi++;
+    out.push([b.bundle, b.who, b.addr, b.tel, b.tel2 || b.tel, 1, b.item, b.memo]);
   }
-  return { rows: out, boxes: bundles.size, multi, skipped };
+  return { rows: out, boxes: use.length, multi,
+           dropped: boxes.length - use.length };
 }
 
 /* ② 배송처리 + 로젠 출력 → 이카운트 송장 TSV */
@@ -532,31 +682,86 @@ function download(blob, name) {
 }
 
 /* ── 왼쪽 ── */
-let shipRows1 = null;
+let shipRows1 = null, boxes1 = [], off1 = new Set(), mode1 = 'ship';
+
+function esc1(x){return String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function renderPick() {
+  const box = $('pick1');
+  if (!boxes1.length) { box.classList.remove('on'); box.innerHTML = ''; return; }
+  const on = boxes1.length - off1.size;
+  box.innerHTML =
+    `<div class="head"><b>보낼 건 고르기</b>` +
+    `<span class="n">${on} / ${boxes1.length}건 선택</span>` +
+    `<button type="button" id="pk-all">${off1.size ? '전체 선택' : '전체 해제'}</button></div>` +
+    `<ul class="list">` + boxes1.map((b, i) => {
+      const checked = !off1.has(b.bundle);
+      return `<li class="${checked ? '' : 'off'}">` +
+        `<input type="checkbox" data-i="${i}"${checked ? ' checked' : ''}>` +
+        `<span class="body"><span class="who">${esc1(b.who) || '<i>이름 못 찾음</i>'}` +
+        (b.tel ? ` <span class="tel">${esc1(b.tel)}</span>` : '') + `</span>` +
+        `<div class="sub">${esc1(b.addr) || '<i>주소 못 찾음</i>'}</div>` +
+        `<div class="sub">${esc1(b.item)}</div>` +
+        (b.memo ? `<div class="sub memo">요청 · ${esc1(b.memo)}</div>` : '') +
+        (b.why ? `<div class="why">${esc1(b.why)} — 로젠이 아닌 것 같아 빼뒀습니다</div>` : '') +
+        `</span></li>`;
+    }).join('') + `</ul>` +
+    `<p class="hint">직발송·방문수령·다른 택배로 나가는 건은 체크를 빼세요. 뺀 건은 로젠 파일에 안 들어갑니다.` +
+    (mode1 === 'sales' ? ` 판매조회는 비고에 손으로 적힌 글을 푼 것이라 <b>이름·전화·주소가 맞는지 꼭 보세요.</b>` : ``) +
+    `</p>`;
+  box.classList.add('on');
+  $('b1').disabled = on === 0;
+}
+
+$('pick1').addEventListener('change', e => {
+  const t = e.target;
+  if (t.type !== 'checkbox' || !t.dataset.i) return;
+  const b = boxes1[+t.dataset.i];
+  if (t.checked) off1.delete(b.bundle); else off1.add(b.bundle);
+  renderPick();
+});
+$('pick1').addEventListener('click', e => {
+  if (e.target.id !== 'pk-all') return;
+  if (off1.size) off1.clear(); else boxes1.forEach(b => off1.add(b.bundle));
+  renderPick();
+});
 dropzone('d1', 'f1', false, async files => {
   const f = files[0];
-  $('l1').innerHTML = `<li><span class="kind">배송처리</span><b>${f.name}</b></li>`;
+  $('l1').innerHTML = `<li><span class="kind">이카운트</span><b>${f.name}</b></li>`;
   $('m1').classList.remove('on');
   try {
     shipRows1 = readSheet(await unzip(await f.arrayBuffer()));
-    toTable(shipRows1, ['묶음주문번호', '수취인']);      // 형식 확인
-    say($('s1'), 'ok', '읽었습니다. 변환 버튼을 누르세요.');
-    $('b1').disabled = false;
+    mode1 = isSalesSheet(shipRows1) ? 'sales' : 'ship';
+    toTable(shipRows1, mode1 === 'sales'                 // 형식 확인
+      ? ['일자-No.', '비고'] : ['묶음주문번호', '수취인']);
+    boxes1 = boxesOf(shipRows1);
+    off1 = new Set(boxes1.filter(b => b.why).map(b => b.bundle));   // 로젠이 아닌 건은 미리 뺀다
+    if (!boxes1.length) {
+      say($('s1'), 'err', '보낼 주문이 없습니다.', '전부 이미 송장이 있는 줄입니다.');
+      $('b1').disabled = true;
+    } else if (off1.size) {
+      say($('s1'), 'ok', `${mode1 === 'sales' ? '전표' : '상자'} ${boxes1.length}건 — 로젠이 아닌 것 같은 ${off1.size}건은 미리 빼뒀습니다.`,
+          '맞는지 보시고, 아니면 다시 체크하세요.');
+    } else {
+      say($('s1'), 'ok', `${mode1 === 'sales' ? '전표' : '상자'} ${boxes1.length}건. 뺄 게 없으면 그대로 변환하세요.`);
+    }
+    renderPick();
   } catch (e) {
-    shipRows1 = null; $('b1').disabled = true;
-    say($('s1'), 'err', '이 파일은 배송처리 Excel이 아닙니다.', e.message);
+    shipRows1 = null; boxes1 = []; off1 = new Set(); renderPick();
+    $('b1').disabled = true;
+    say($('s1'), 'err', '배송처리도 판매조회도 아닌 것 같습니다.', e.message);
   }
 });
 
 $('b1').addEventListener('click', () => {
   try {
-    const r = buildLogen(shipRows1);
-    if (!r.boxes) { say($('s1'), 'err', '보낼 주문이 없습니다.', '이미 송장이 있는 줄만 들어 있습니다.'); return; }
+    const r = buildLogen(boxes1, off1);
+    if (!r.boxes) { say($('s1'), 'err', '보낼 주문이 없습니다.', '전부 빼셨거나 이미 송장이 있는 줄만 들어 있습니다.'); return; }
     download(makeXlsx(r.rows, [20, 12, 46, 16, 16, 8, 40, 30], '로젠업로드'), '로젠업로드.xlsx');
     say($('s1'), 'ok', `상자 ${r.boxes}건 → 로젠업로드.xlsx`);
     let m = `상자(묶음주문)   ${r.boxes}건\n`;
     if (r.multi) m += `여러 품목 주문   ${r.multi}건 — 물품명을 합쳤습니다\n`;
-    if (r.skipped) m += `이미 송장 있음   ${r.skipped}줄 제외\n`;
+    if (r.dropped) m += `직접 빼신 것     ${r.dropped}건 제외 — 로젠에 안 갑니다\n`;
     m += `택배수량은 전부 1입니다. 두 상자로 나갈 건은 직접 고치세요.`;
     $('m1').textContent = m; $('m1').classList.add('on');
   } catch (e) { say($('s1'), 'err', '변환 실패', e.message); }
