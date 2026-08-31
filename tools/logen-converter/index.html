@@ -793,6 +793,7 @@ $('b1').addEventListener('click', () => {
     m += `택배수량은 전부 1입니다. 두 상자로 나갈 건은 직접 고치세요.`;
     const saved = saveMap(boxes1);
     if (saved) m += `\n\n주문번호 짝 ${saved}건을 이 브라우저에 기억했습니다 —\n송장이 돌아오면 오른쪽에 로젠 파일 하나만 넣으면 됩니다.`;
+    if (mode1 === 'sales') m += `\n\n※ 판매조회 건은 수기 전표라 오른쪽(송장 되돌리기) 대상이 아닙니다.\n   이카운트 배송처리에 없는 주문이므로, 송장번호는 지금 하시던 방식대로\n   전표 비고에 수기로 적으세요.`;
     $('m1').textContent = m; $('m1').classList.add('on');
   } catch (e) { say($('s1'), 'err', '변환 실패', e.message); }
 });
@@ -820,20 +821,30 @@ dropzone('d2', 'f2', true, async files => {
     } else if (logenRows2) {
       // 배송처리 파일이 없다 — ①에서 기억해 둔 짝으로 되는지 본다
       const mem = loadMap();
-      const need = toTable(logenRows2, ['운송장번호'])
+      const all = toTable(logenRows2, ['운송장번호'])
         .filter(r => /^\d{8,}$/.test((r['운송장번호'] || '').trim()))
         .map(r => cleanNo(r['주문번호'])).filter(Boolean);
+      // '20260831-92' 처럼 대시가 있으면 판매조회(수기 전표) 건이다.
+      // 이카운트 배송처리에 없는 주문이라 여기로 올릴 수 없다.
+      const slips = all.filter(b => b.includes('-'));
+      const need = all.filter(b => !b.includes('-'));
+      const 전표꼬리 = slips.length
+        ? ' 수기 전표 ' + slips.length + '건은 뺍니다 — 배송처리에 없는 주문이라, 송장번호를 전표 비고에 수기로 적으세요.'
+        : '';
       const miss = need.filter(b => !mem[b]);
-      if (need.length && miss.length === 0) {
+      if (!need.length && slips.length) {
+        say($('s2'), 'err', '이 로젠 파일은 전부 판매조회(수기 전표) 건입니다 — ' + slips.length + '건.',
+            '수기 전표는 이카운트 배송처리에 없어서 여기로 올릴 수 없습니다. 송장번호는 전표 비고에 수기로 적으세요.');
+      } else if (need.length && miss.length === 0) {
         say($('s2'), 'ok', '로젠 파일 하나로 충분합니다.',
-            '①에서 기억해 둔 주문번호 짝 ' + need.length + '건을 씁니다.');
+            '①에서 기억해 둔 주문번호 짝 ' + need.length + '건을 씁니다.' + 전표꼬리);
         $('b2').disabled = $('b2d').disabled = false;
       } else if (need.length && miss.length < need.length) {
         say($('s2'), 'err', '일부만 기억하고 있습니다 (' + (need.length - miss.length) + '/' + need.length + '건).',
-            '나머지는 짝을 몰라서 배송처리 Excel도 같이 넣어주세요.');
+            '나머지는 짝을 몰라서 배송처리 Excel도 같이 넣어주세요.' + 전표꼬리);
       } else {
         say($('s2'), 'err', '이 로젠 건들의 주문번호 짝을 모릅니다.',
-            '①을 다른 PC·브라우저에서 했거나 오래된 건입니다. 배송처리 Excel을 같이 넣어주세요.');
+            '①을 다른 PC·브라우저에서 했거나 오래된 건입니다. 배송처리 Excel을 같이 넣어주세요.' + 전표꼬리);
       }
     } else {
       say($('s2'), 'err', '아직 부족합니다.',
@@ -850,6 +861,7 @@ function waybillFromMemory(logenRows, code) {
   for (const r of logen) {
     const b = cleanNo(r['주문번호']);
     const wb = r['운송장번호'].trim();
+    if (b && b.includes('-')) continue;                        // 수기 전표 건 — 대상 아님
     if (b && mem[b]) for (const o of mem[b].o) out.push([MALL_CODE, o, b, code, wb]);
     else unmatched.push([b || '(주문번호 없음)', r['수하인명'] || '']);
   }
