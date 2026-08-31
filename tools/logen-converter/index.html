@@ -184,7 +184,8 @@
   <section class="panel recv" id="p2">
     <p class="flow">로젠 → 이카운트</p>
     <h2>송장 등록 파일 만들기</h2>
-    <p class="desc">로젠 송장 출력 파일과 배송처리 Excel을 <b>둘 다</b> 넣으면, 이카운트 <b>웹자료올리기</b>에 붙여넣을 내용이 나옵니다.</p>
+    <p class="desc">로젠 송장 출력 파일을 넣으면 이카운트 <b>웹자료올리기</b>에 붙여넣을 내용이 나옵니다.
+    ①을 이 브라우저에서 했다면 <b>로젠 파일 하나면 됩니다.</b> 아니면 배송처리 Excel을 같이 넣어주세요.</p>
 
     <label class="drop" id="d2">
       <div class="big">파일 2개</div>
@@ -753,6 +754,33 @@ dropzone('d1', 'f1', false, async files => {
   }
 });
 
+/* ①에서 본 묶음주문번호 → 그 묶음의 주문번호(줄) 목록.
+   ②에서 로젠 파일 하나만 받아도 되게 이 브라우저에 기억해 둔다.
+   주문번호와 배송메모뿐, 이름·주소는 저장하지 않는다. 60일 지난 것은 지운다. */
+const MAPKEY = 'logen-map-v1';
+function loadMap() {
+  try {
+    const m = JSON.parse(localStorage.getItem(MAPKEY) || '{}');
+    const cut = Date.now() - 60 * 86400e3;
+    for (const k of Object.keys(m)) if (!m[k].t || m[k].t < cut) delete m[k];
+    return m;
+  } catch (e) { return {}; }
+}
+function saveMap(boxes) {
+  if (mode1 !== 'ship') return 0;
+  try {
+    const m = loadMap();
+    let n = 0;
+    for (const b of boxes) {
+      if (!b.lines) continue;
+      const os = b.lines.map(r => cleanNo(r['주문번호'])).filter(Boolean);
+      if (os.length) { m[b.bundle] = { o: os, t: Date.now() }; n++; }
+    }
+    localStorage.setItem(MAPKEY, JSON.stringify(m));
+    return n;
+  } catch (e) { return 0; }
+}
+
 $('b1').addEventListener('click', () => {
   try {
     const r = buildLogen(boxes1, off1);
@@ -763,6 +791,8 @@ $('b1').addEventListener('click', () => {
     if (r.multi) m += `여러 품목 주문   ${r.multi}건 — 물품명을 합쳤습니다\n`;
     if (r.dropped) m += `직접 빼신 것     ${r.dropped}건 제외 — 로젠에 안 갑니다\n`;
     m += `택배수량은 전부 1입니다. 두 상자로 나갈 건은 직접 고치세요.`;
+    const saved = saveMap(boxes1);
+    if (saved) m += `\n\n주문번호 짝 ${saved}건을 이 브라우저에 기억했습니다 —\n송장이 돌아오면 오른쪽에 로젠 파일 하나만 넣으면 됩니다.`;
     $('m1').textContent = m; $('m1').classList.add('on');
   } catch (e) { say($('s1'), 'err', '변환 실패', e.message); }
 });
@@ -787,6 +817,24 @@ dropzone('d2', 'f2', true, async files => {
     if (shipRows2 && logenRows2) {
       say($('s2'), 'ok', '두 파일 다 읽었습니다.');
       $('b2').disabled = $('b2d').disabled = false;
+    } else if (logenRows2) {
+      // 배송처리 파일이 없다 — ①에서 기억해 둔 짝으로 되는지 본다
+      const mem = loadMap();
+      const need = toTable(logenRows2, ['운송장번호'])
+        .filter(r => /^\d{8,}$/.test((r['운송장번호'] || '').trim()))
+        .map(r => cleanNo(r['주문번호'])).filter(Boolean);
+      const miss = need.filter(b => !mem[b]);
+      if (need.length && miss.length === 0) {
+        say($('s2'), 'ok', '로젠 파일 하나로 충분합니다.',
+            '①에서 기억해 둔 주문번호 짝 ' + need.length + '건을 씁니다.');
+        $('b2').disabled = $('b2d').disabled = false;
+      } else if (need.length && miss.length < need.length) {
+        say($('s2'), 'err', '일부만 기억하고 있습니다 (' + (need.length - miss.length) + '/' + need.length + '건).',
+            '나머지는 짝을 몰라서 배송처리 Excel도 같이 넣어주세요.');
+      } else {
+        say($('s2'), 'err', '이 로젠 건들의 주문번호 짝을 모릅니다.',
+            '①을 다른 PC·브라우저에서 했거나 오래된 건입니다. 배송처리 Excel을 같이 넣어주세요.');
+      }
     } else {
       say($('s2'), 'err', '아직 부족합니다.',
         (shipRows2 ? '로젠 송장 출력 파일' : '배송처리 Excel') + '을 같이 넣어주세요.');
@@ -794,8 +842,29 @@ dropzone('d2', 'f2', true, async files => {
   } catch (e) { say($('s2'), 'err', '파일을 읽지 못했습니다.', e.message); }
 });
 
+function waybillFromMemory(logenRows, code) {
+  const mem = loadMap();
+  const logen = toTable(logenRows, ['운송장번호'])
+    .filter(r => /^\d{8,}$/.test((r['운송장번호'] || '').trim()));
+  const out = [], unmatched = [];
+  for (const r of logen) {
+    const b = cleanNo(r['주문번호']);
+    const wb = r['운송장번호'].trim();
+    if (b && mem[b]) for (const o of mem[b].o) out.push([MALL_CODE, o, b, code, wb]);
+    else unmatched.push([b || '(주문번호 없음)', r['수하인명'] || '']);
+  }
+  return {
+    tsv: out.map(r => r.join('\t')).join('\n'),
+    lines_n: out.length,
+    boxes: new Set(out.map(r => r[2])).size,
+    logenN: logen.length, withNo: logen.length - unmatched.length,
+    unmatched
+  };
+}
+
 function build2() {
-  const r = buildWaybill(shipRows2, logenRows2, 'KGB');
+  const r = shipRows2 ? buildWaybill(shipRows2, logenRows2, 'KGB')
+                      : waybillFromMemory(logenRows2, 'KGB');
   tsv2 = r.tsv;
   let m = `로젠 송장        ${r.logenN}건\n`;
   m += `그중 주문번호 있음 ${r.withNo}건\n`;
