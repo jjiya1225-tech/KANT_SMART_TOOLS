@@ -407,8 +407,10 @@ function doConvert() {
       var imgExt = imageExtMap[sheetRow] || 'png';
       var korean = lastKorean;
       if (korean && color) korean += ' - ' + color;
-      // 매입 원가는 반올림 전 값으로 따로 둔다 — 개당 24원짜리 부품이 100원 반올림에 0원이 되는 것을 막는다
-      var costKrw = Math.round(price * rate);
+      // 매입 원가는 올림으로 정한다: 1,000원 넘으면 100원 단위, 그 이하는 10원 단위.
+      // (판매가 산정용 반올림과 별개. 24원짜리 부품이 0원이 되지 않게 하려는 것)
+      var rawKrw = price * rate;
+      var costKrw = rawKrw > 1000 ? Math.ceil(rawKrw / 100) * 100 : Math.ceil(rawKrw / 10) * 10;
       convertedRows.push({
         itemName: itemName, koreanName: korean, costKrw: costKrw, qty: qty, krwPrice: krwPrice, vendorPrice: vendorPrice,
         onlinePrice: onlinePrice, totalAmt: totalAmt, img: img, imgExt: imgExt
