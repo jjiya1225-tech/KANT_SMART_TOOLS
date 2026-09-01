@@ -617,29 +617,71 @@ function buildLogen(boxes, excluded) {
            dropped: boxes.length - use.length };
 }
 
-/* ② 배송처리 + 로젠 출력 → 이카운트 송장 TSV */
+/* ② 배송처리 + 로젠 출력 → 이카운트 송장 TSV
+
+   1차: 로젠 주문번호(=묶음주문번호)로 잇는다. 우리 파일로 접수했으면 여기서 끝난다.
+   2차: 주문번호가 빈 송장(수기 접수분)은 수하인 이름 + 전화 앞자리로 잇는다.
+        로젠은 전화를 010-4002-*** 처럼 가리므로 남은 앞자리만 비교한다.
+        같은 사람이 둘이면 어느 송장인지 알 수 없다 — 자동으로 넣지 않고 알려준다. */
+function normName(s) { return String(s || '').replace(/\s+/g, '').replace(/님$/, ''); }
+function telHead(s) { return String(s || '').replace(/\D/g, ''); }   // 마스킹(*)은 숫자가 아니라 사라진다
+
 function buildWaybill(shipRows, logenRows, code) {
   const ship = toTable(shipRows, ['묶음주문번호', '수취인']);
   const logen = toTable(logenRows, ['운송장번호'])
     .filter(r => /^\d{8,}$/.test((r['운송장번호'] || '').trim()));
   const byNo = new Map();
+  const pool = [];                                   // 주문번호 없는 송장 — 수기 접수분
   for (const r of logen) {
     const k = cleanNo(r['주문번호']);
     if (k) byNo.set(k, r['운송장번호'].trim());
+    else pool.push({
+      wb: r['운송장번호'].trim(),
+      nm: normName(r['이름'] || r['수하인']),
+      tel: telHead(r['전화'] || r['휴대폰']),
+      used: false
+    });
   }
   const firstOf = new Map();
   for (const r of ship) {
     const b = cleanNo(r['묶음주문번호']);
     if (b && !firstOf.has(b)) firstOf.set(b, r);
   }
-  const out = [], unmatched = new Set();
+  function byPerson(shipRow) {
+    const nm = normName(shipRow['수취인']);
+    const tel = telHead(shipRow['수취인연락처1']) || telHead(shipRow['수취인연락처2']);
+    if (!nm) return { hits: [] };
+    const hits = pool.filter(c => !c.used && c.nm === nm &&
+      (!c.tel || !tel || tel.indexOf(c.tel) === 0));
+    return { hits };
+  }
+  const out = [], unmatched = [], ambiguous = [];
+  const wayOf = new Map(), how = new Map();
+  for (const [b, first] of firstOf) {
+    const direct = byNo.get(b);
+    if (direct) { wayOf.set(b, direct); how.set(b, '번호'); continue; }
+    const { hits } = byPerson(first);
+    if (hits.length === 1) {
+      hits[0].used = true;
+      wayOf.set(b, hits[0].wb); how.set(b, '이름');
+    } else if (hits.length > 1) {
+      ambiguous.push([b, first['수취인'] || '', hits.length]);
+    } else {
+      unmatched.push([b, first['수취인'] || '']);
+    }
+  }
+  let nameMatched = 0;
+  const nameList = [];
   for (const r of ship) {
     const bundle = cleanNo(r['묶음주문번호']);
     const orderNo = cleanNo(r['주문번호']);
     if (!bundle || !orderNo) continue;
-    const wb = byNo.get(bundle);
+    const wb = wayOf.get(bundle);
     if (wb) out.push([MALL_CODE, orderNo, bundle, code, wb]);
-    else unmatched.add(bundle + '\t' + ((firstOf.get(bundle) || {})['수취인'] || ''));
+  }
+  for (const [b, w] of wayOf) if (how.get(b) === '이름') {
+    nameMatched++;
+    nameList.push([(firstOf.get(b) || {})['수취인'] || '', w]);
   }
   return {
     tsv: out.map(r => r.join('\t')).join('\n'),
@@ -647,7 +689,8 @@ function buildWaybill(shipRows, logenRows, code) {
     boxes: new Set(out.map(r => r[2])).size,
     logenN: logen.length,
     withNo: byNo.size,
-    unmatched: [...unmatched].map(s => s.split('\t'))
+    nameMatched, nameList, ambiguous,
+    unmatched
   };
 }
 
@@ -880,12 +923,22 @@ function build2() {
   tsv2 = r.tsv;
   let m = `로젠 송장        ${r.logenN}건\n`;
   m += `그중 주문번호 있음 ${r.withNo}건\n`;
+  if (r.nameMatched) {
+    m += `이름·전화로 맞춤   ${r.nameMatched}건 — 수기 접수분\n`;
+    m += r.nameList.slice(0, 10).map(([n, w]) => `   ${n}  ← ${w}`).join('\n') + '\n';
+    m += `   ※ 이름과 전화 앞자리로 이은 것입니다. 위 짝이 맞는지 한 번 보세요.\n`;
+  }
   m += `붙여넣을 줄       ${r.lines_n}줄 (상자 ${r.boxes}건)\n`;
+  if (r.ambiguous && r.ambiguous.length) {
+    m += `\n⚠ 같은 이름의 송장이 여러 개라 못 가른 것 ${r.ambiguous.length}건\n`;
+    m += r.ambiguous.map(([b, n, k]) => `   ${b}  ${n} (후보 ${k}개)`).join('\n');
+    m += `\n   이 건들은 로젠 화면에서 송장번호를 확인해 이카운트에 직접 넣으세요.\n`;
+  }
   if (r.unmatched.length) {
     m += `\n⚠ 송장을 못 찾은 상자 ${r.unmatched.length}건\n`;
     m += r.unmatched.slice(0, 8).map(([b, n]) => `   ${b}  ${n}`).join('\n');
     if (r.unmatched.length > 8) m += `\n   … 외 ${r.unmatched.length - 8}건`;
-    m += `\n\n로젠 A열(주문번호)에 묶음주문번호를 넣고 접수해야 매칭됩니다.`;
+    m += `\n\n①에서 만든 로젠업로드.xlsx 로 접수하면 전부 번호로 잡힙니다.\n수기로 접수한 건은 이름·전화로 잇는데, 이름이 다르게 적혔으면 못 잡습니다.`;
   }
   if (r.lines_n > 300) m += `\n\n⚠ 300줄이 넘습니다. 이카운트는 한 번에 300건까지라 나눠서 붙여넣으세요.`;
   $('m2').textContent = m; $('m2').classList.add('on');
