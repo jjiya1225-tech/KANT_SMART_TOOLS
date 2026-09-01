@@ -168,6 +168,7 @@ var CURRENCY_PRESETS = {
 };
 var MAPPING_FIELDS = [
   { key: 'productName', label: '품명/DESCRIPTION', target: '제품명 (일부)', defaultMatch: ['품명','型号','모델','model','item','description','desc'] },
+  { key: 'koreanName', label: '한국품명', target: '이카운트 품목 찾기용', defaultMatch: ['한국품명','韩文','한국','korean','한글'] },
   { key: 'color', label: '칼라/색상', target: '제품명 (일부)', defaultMatch: ['칼라','颜色','색상','color','컬러'] },
   { key: 'quantity', label: '수량/UNIT', target: '수량', defaultMatch: ['수량','数量','qty','unit','ea','pcs'] },
   { key: 'unitPrice', label: '단가/PRICE', target: '단가 (환율적용)', defaultMatch: ['단가','单价','price','uint'] }
@@ -309,7 +310,7 @@ function extractImages(buf) {
 }
 // ============ Header detection ============
 function detectHeader() {
-  var keywords = ['품명','수량','단가','型号','数量','单价','칼라','颜色','description','unit','price','amount'];
+  var keywords = ['품명','수량','단가','型号','数量','单价','칼라','颜色','한국품명','韩文','description','unit','price','amount'];
   var headerIdx = 1;
   var bestScore = 0;
   for (var i = 0; i < Math.min(30, rawData.length); i++) {
@@ -372,13 +373,14 @@ function doConvert() {
     var onlineMulti = parseFloat(document.getElementById('onlineMulti').value) || 3;
     var startRow = parseInt(document.getElementById('startRow').value) || 4;
     var colProduct = parseInt(document.getElementById('map_productName').value);
+    var colKorean = parseInt(document.getElementById('map_koreanName').value);
     var colColor = parseInt(document.getElementById('map_color').value);
     var colQty = parseInt(document.getElementById('map_quantity').value);
     var colPrice = parseInt(document.getElementById('map_unitPrice').value);
     if (colQty === -1 || colPrice === -1) { showStatus('error', '수량과 단가 열은 반드시 매핑해야 합니다.'); return; }
     var dataRows = rawData.slice(startRow - 1);
     convertedRows = [];
-    var lastProduct = '';
+    var lastProduct = '', lastKorean = '';
     for (var idx = 0; idx < dataRows.length; idx++) {
       var row = dataRows[idx];
       var qty = parseFloat(row[colQty]);
@@ -387,6 +389,9 @@ function doConvert() {
       // Update product name if current row has one
       if (colProduct >= 0 && row[colProduct] && String(row[colProduct]).trim()) {
         lastProduct = String(row[colProduct]).trim();
+      }
+      if (colKorean >= 0 && row[colKorean] && String(row[colKorean]).trim()) {
+        lastKorean = String(row[colKorean]).trim();
       }
       // Skip total/summary rows: no product name in this row AND no forward-filled name
       if (!lastProduct) continue;
@@ -400,8 +405,12 @@ function doConvert() {
       var sheetRow = (startRow - 1) + idx;
       var img = imageMap[sheetRow] || null;
       var imgExt = imageExtMap[sheetRow] || 'png';
+      var korean = lastKorean;
+      if (korean && color) korean += ' - ' + color;
+      // 매입 원가는 반올림 전 값으로 따로 둔다 — 개당 24원짜리 부품이 100원 반올림에 0원이 되는 것을 막는다
+      var costKrw = Math.round(price * rate);
       convertedRows.push({
-        itemName: itemName, qty: qty, krwPrice: krwPrice, vendorPrice: vendorPrice,
+        itemName: itemName, koreanName: korean, costKrw: costKrw, qty: qty, krwPrice: krwPrice, vendorPrice: vendorPrice,
         onlinePrice: onlinePrice, totalAmt: totalAmt, img: img, imgExt: imgExt
       });
     }
@@ -431,11 +440,11 @@ function renderPreview() {
     '<div class="stat"><div class="value">' + totalQty.toLocaleString() + '</div><div class="label">총 수량</div></div>' +
     '<div class="stat"><div class="value">₩' + totalAmt.toLocaleString() + '</div><div class="label">총 금액</div></div>' +
     '<div class="stat"><div class="value">' + imgCount + '</div><div class="label">이미지</div></div>';
-  var html = '<table><thead><tr><th>이미지</th><th>제품명</th><th>수량</th><th>단가</th><th>업체가</th><th>온라인가</th><th>총금액</th></tr></thead><tbody>';
+  var html = '<table><thead><tr><th>이미지</th><th>제품명</th><th>한국품명</th><th>수량</th><th>단가</th><th>업체가</th><th>온라인가</th><th>총금액</th></tr></thead><tbody>';
   for (var j = 0; j < convertedRows.length; j++) {
     var r = convertedRows[j];
     var imgCell = r.img ? '<img src="data:image/' + r.imgExt + ';base64,' + r.img + '" alt="">' : '<div class="no-img">no img</div>';
-    html += '<tr><td>' + imgCell + '</td><td>' + r.itemName + '</td><td>' + r.qty.toLocaleString() + '</td><td>₩' + r.krwPrice.toLocaleString() + '</td><td>₩' + r.vendorPrice.toLocaleString() + '</td><td>₩' + r.onlinePrice.toLocaleString() + '</td><td>₩' + r.totalAmt.toLocaleString() + '</td></tr>';
+    html += '<tr><td>' + imgCell + '</td><td>' + r.itemName + '</td><td>' + (r.koreanName || '') + '</td><td>' + r.qty.toLocaleString() + '</td><td>₩' + r.krwPrice.toLocaleString() + '</td><td>₩' + r.vendorPrice.toLocaleString() + '</td><td>₩' + r.onlinePrice.toLocaleString() + '</td><td>₩' + r.totalAmt.toLocaleString() + '</td></tr>';
   }
   html += '</tbody></table>';
   document.getElementById('previewTable').innerHTML = html;
@@ -457,7 +466,8 @@ function doDownload() {
     var ws = wb.addWorksheet('제품목록');
     ws.columns = [
       { header: '이미지', key: 'img', width: Math.ceil(imgSize / 7) + 2 },
-      { header: '제품명', key: 'name', width: 45 },
+      { header: '제품명', key: 'name', width: 40 },
+      { header: '한국품명', key: 'kname', width: 34 },
       { header: '수량', key: 'qty', width: 10 },
       { header: '단가', key: 'price', width: 14 },
       { header: '업체가', key: 'vendor', width: 14 },
@@ -474,7 +484,7 @@ function doDownload() {
     for (var i = 0; i < convertedRows.length; i++) {
       var r = convertedRows[i];
       var rowNum = i + 2;
-      ws.addRow({ img: '', name: r.itemName, qty: r.qty, price: r.krwPrice, vendor: r.vendorPrice, online: r.onlinePrice, total: r.totalAmt });
+      ws.addRow({ img: '', name: r.itemName, kname: r.koreanName || '', qty: r.qty, price: r.krwPrice, vendor: r.vendorPrice, online: r.onlinePrice, total: r.totalAmt });
       var exRow = ws.getRow(rowNum);
       exRow.height = imgSize * 0.75;
       exRow.alignment = { vertical: 'middle' };
@@ -489,6 +499,30 @@ function doDownload() {
       }
     }
     ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+    // ── 이카운트 입고용 시트 — 구매입력에 바로 옮기기 좋은 최소 열 ──
+    // 품목코드는 비워 둔다. 클로드 코드가 한국품명으로 이카운트 품목을 찾아 채운다.
+    var ws2 = wb.addWorksheet('이카운트입고');
+    ws2.columns = [
+      { header: '품목코드(클로드가 채움)', key: 'cd', width: 20 },
+      { header: '한국품명', key: 'kname', width: 36 },
+      { header: '원 제품명', key: 'name', width: 36 },
+      { header: '수량', key: 'qty', width: 10 },
+      { header: '매입단가(원)', key: 'price', width: 14 },
+      { header: '공급가액', key: 'amt', width: 16 }
+    ];
+    ws2.getRow(1).eachCell(function(cell) {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E5E1A' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    for (var k = 0; k < convertedRows.length; k++) {
+      var r2 = convertedRows[k];
+      ws2.addRow({ cd: '', kname: r2.koreanName || '', name: r2.itemName, qty: r2.qty, price: r2.costKrw, amt: r2.qty * r2.costKrw });
+      var er = ws2.getRow(k + 2);
+      er.getCell('price').numFmt = '#,##0'; er.getCell('amt').numFmt = '#,##0'; er.getCell('qty').numFmt = '#,##0';
+    }
+    ws2.views = [{ state: 'frozen', ySplit: 1 }];
     wb.xlsx.writeBuffer().then(function(buffer) {
       var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       var url = URL.createObjectURL(blob);
@@ -514,15 +548,23 @@ function doDownload() {
 }
 function downloadWithoutImages() {
   try {
-    var data = [['이미지', '제품명', '수량', '단가', '업체가', '온라인가', '총금액']];
+    var data = [['이미지', '제품명', '한국품명', '수량', '단가', '업체가', '온라인가', '총금액']];
     for (var i = 0; i < convertedRows.length; i++) {
       var r = convertedRows[i];
-      data.push(['', r.itemName, r.qty, r.krwPrice, r.vendorPrice, r.onlinePrice, r.totalAmt]);
+      data.push(['', r.itemName, r.koreanName || '', r.qty, r.krwPrice, r.vendorPrice, r.onlinePrice, r.totalAmt]);
+    }
+    var data2 = [['품목코드(클로드가 채움)', '한국품명', '원 제품명', '수량', '매입단가(원)', '공급가액']];
+    for (var i2 = 0; i2 < convertedRows.length; i2++) {
+      var q = convertedRows[i2];
+      data2.push(['', q.koreanName || '', q.itemName, q.qty, q.costKrw, q.qty * q.costKrw]);
     }
     var ws = XLSX.utils.aoa_to_sheet(data);
     ws['!cols'] = [{ wch: 12 }, { wch: 45 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '제품목록');
+    var ws2 = XLSX.utils.aoa_to_sheet(data2);
+    ws2['!cols'] = [{ wch: 20 }, { wch: 36 }, { wch: 36 }, { wch: 10 }, { wch: 14 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, ws2, '이카운트입고');
     XLSX.writeFile(wb, '제품목록_변환결과.xlsx');
     showStatus('info', '이미지 없이 다운로드되었습니다 (ExcelJS 로드 실패)');
   } catch (err) {
