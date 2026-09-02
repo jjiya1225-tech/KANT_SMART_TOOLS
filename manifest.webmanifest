@@ -1,0 +1,13 @@
+{
+  "name": "KANT 직원용 툴",
+  "short_name": "KANT 툴",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14161C",
+  "theme_color": "#14161C",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
