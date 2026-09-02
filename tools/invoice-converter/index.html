@@ -102,11 +102,12 @@ td img { width: 60px; height: 60px; object-fit: contain; border-radius: 4px; bac
 <input type="number" id="exchangeRate" value="220" step="0.1">
 </div>
 <div class="field">
-<label>반올림 단위</label>
+<label>가격 끝자리</label>
 <select id="roundUnit">
-<option value="100" selected>100원 단위</option>
-<option value="10">10원 단위</option>
-<option value="1000">1,000원 단위</option>
+<option value="auto" selected>자동 올림 (1,000원 초과 100원 · 이하 10원)</option>
+<option value="100">100원 반올림</option>
+<option value="10">10원 반올림</option>
+<option value="1000">1,000원 반올림</option>
 </select>
 </div>
 <div class="field">
@@ -368,7 +369,8 @@ function colLetter(i) {
 function doConvert() {
   try {
     var rate = parseFloat(document.getElementById('exchangeRate').value) || 220;
-    var roundUnit = parseInt(document.getElementById('roundUnit').value) || 100;
+    var roundMode = document.getElementById('roundUnit').value;
+    var roundUnit = roundMode === 'auto' ? 0 : (parseInt(roundMode) || 100);
     var vendorMulti = parseFloat(document.getElementById('vendorMulti').value) || 2;
     var onlineMulti = parseFloat(document.getElementById('onlineMulti').value) || 3;
     var startRow = parseInt(document.getElementById('startRow').value) || 4;
@@ -398,9 +400,9 @@ function doConvert() {
       var color = (colColor >= 0 && row[colColor]) ? String(row[colColor]).trim() : '';
       var itemName = lastProduct;
       if (color) itemName += '-' + color;
-      var krwPrice = roundHalfUp(price * rate, roundUnit);
-      var vendorPrice = roundHalfUp(krwPrice * vendorMulti, roundUnit);
-      var onlinePrice = roundHalfUp(krwPrice * onlineMulti, roundUnit);
+      var krwPrice = priceRound(price * rate, roundUnit);
+      var vendorPrice = priceRound(krwPrice * vendorMulti, roundUnit);
+      var onlinePrice = priceRound(krwPrice * onlineMulti, roundUnit);
       var totalAmt = qty * krwPrice;
       var sheetRow = (startRow - 1) + idx;
       var img = imageMap[sheetRow] || null;
@@ -409,8 +411,7 @@ function doConvert() {
       if (korean && color) korean += ' - ' + color;
       // 매입 원가는 올림으로 정한다: 1,000원 넘으면 100원 단위, 그 이하는 10원 단위.
       // (판매가 산정용 반올림과 별개. 24원짜리 부품이 0원이 되지 않게 하려는 것)
-      var rawKrw = price * rate;
-      var costKrw = rawKrw > 1000 ? Math.ceil(rawKrw / 100) * 100 : Math.ceil(rawKrw / 10) * 10;
+      var costKrw = ceilSmart(price * rate);
       convertedRows.push({
         itemName: itemName, koreanName: korean, costKrw: costKrw, qty: qty, krwPrice: krwPrice, vendorPrice: vendorPrice,
         onlinePrice: onlinePrice, totalAmt: totalAmt, img: img, imgExt: imgExt
@@ -429,6 +430,27 @@ function doConvert() {
   }
 }
 function roundHalfUp(v, u) { return Math.floor(v / u + 0.5) * u; }
+// 기본 규칙: 1,000원 초과는 100원 단위 올림, 이하는 10원 단위 올림 (24.2원 → 30원)
+function ceilSmart(v) { return v > 1000 ? Math.ceil(v / 100) * 100 : Math.ceil(v / 10) * 10; }
+function priceRound(v, u) { return u ? roundHalfUp(v, u) : ceilSmart(v); }
+/* 커버·마감캡 같은 무상 동봉 부속(단가 0원)은 따로 재고를 두지 않는다.
+   이카운트에서는 본품의 규격란에 참고로만 적으므로,
+   입고 시트에서도 앞 품목의 '동봉 부속' 칸으로 접어 넣는다. */
+function foldAccessories(rows) {
+  var out = [];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (r.costKrw === 0 && out.length) {
+      var label = (r.koreanName || r.itemName || '').replace(/\s+/g, ' ').trim();
+      var memo = label + ' ' + r.qty.toLocaleString() + '개';
+      var host = out[out.length - 1];
+      host.note = host.note ? host.note + ' / ' + memo : memo;
+      continue;
+    }
+    out.push({ koreanName: r.koreanName, itemName: r.itemName, qty: r.qty, costKrw: r.costKrw, note: '' });
+  }
+  return out;
+}
 // ============ Preview ============
 function renderPreview() {
   var totalQty = 0, totalAmt = 0, imgCount = 0;
@@ -507,20 +529,22 @@ function doDownload() {
     var ws2 = wb.addWorksheet('이카운트입고');
     ws2.columns = [
       { header: '품목코드(클로드가 채움)', key: 'cd', width: 20 },
-      { header: '한국품명', key: 'kname', width: 36 },
-      { header: '원 제품명', key: 'name', width: 36 },
+      { header: '한국품명', key: 'kname', width: 34 },
+      { header: '원 제품명', key: 'name', width: 32 },
       { header: '수량', key: 'qty', width: 10 },
       { header: '매입단가(원)', key: 'price', width: 14 },
-      { header: '공급가액', key: 'amt', width: 16 }
+      { header: '공급가액', key: 'amt', width: 14 },
+      { header: '동봉 부속(참고)', key: 'note', width: 30 }
     ];
     ws2.getRow(1).eachCell(function(cell) {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2E5E1A' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
-    for (var k = 0; k < convertedRows.length; k++) {
-      var r2 = convertedRows[k];
-      ws2.addRow({ cd: '', kname: r2.koreanName || '', name: r2.itemName, qty: r2.qty, price: r2.costKrw, amt: r2.qty * r2.costKrw });
+    var ecountRows = foldAccessories(convertedRows);
+    for (var k = 0; k < ecountRows.length; k++) {
+      var r2 = ecountRows[k];
+      ws2.addRow({ cd: '', kname: r2.koreanName || '', name: r2.itemName, qty: r2.qty, price: r2.costKrw, amt: r2.qty * r2.costKrw, note: r2.note || '' });
       var er = ws2.getRow(k + 2);
       er.getCell('price').numFmt = '#,##0'; er.getCell('amt').numFmt = '#,##0'; er.getCell('qty').numFmt = '#,##0';
     }
@@ -555,10 +579,11 @@ function downloadWithoutImages() {
       var r = convertedRows[i];
       data.push(['', r.itemName, r.koreanName || '', r.qty, r.krwPrice, r.vendorPrice, r.onlinePrice, r.totalAmt]);
     }
-    var data2 = [['품목코드(클로드가 채움)', '한국품명', '원 제품명', '수량', '매입단가(원)', '공급가액']];
-    for (var i2 = 0; i2 < convertedRows.length; i2++) {
-      var q = convertedRows[i2];
-      data2.push(['', q.koreanName || '', q.itemName, q.qty, q.costKrw, q.qty * q.costKrw]);
+    var data2 = [['품목코드(클로드가 채움)', '한국품명', '원 제품명', '수량', '매입단가(원)', '공급가액', '동봉 부속(참고)']];
+    var folded = foldAccessories(convertedRows);
+    for (var i2 = 0; i2 < folded.length; i2++) {
+      var q = folded[i2];
+      data2.push(['', q.koreanName || '', q.itemName, q.qty, q.costKrw, q.qty * q.costKrw, q.note || '']);
     }
     var ws = XLSX.utils.aoa_to_sheet(data);
     ws['!cols'] = [{ wch: 12 }, { wch: 45 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
