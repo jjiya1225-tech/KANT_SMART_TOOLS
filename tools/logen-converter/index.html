@@ -948,7 +948,8 @@ function build2() {
 $('b2').addEventListener('click', async () => {
   try {
     const r = build2();
-    if (!r.lines_n) { say($('s2'), 'err', '매칭된 송장이 없습니다.', '로젠 출력 파일에 주문번호가 비어 있습니다.'); return; }
+    if (!r.lines_n) { say($('s2'), 'err', '매칭된 송장이 0건이라 복사할 내용이 없습니다.',
+      '주문번호로도, 이름·전화로도 못 이었습니다. 두 파일이 같은 날 물량이 맞는지, 로젠 출력에 운송장번호가 있는지 확인하세요. 위 요약의 «못 찾은 상자» 목록이 단서입니다.'); return; }
     await navigator.clipboard.writeText(tsv2);
     say($('s2'), 'ok', `${r.lines_n}줄 복사했습니다.`, '이카운트 배송처리 › 웹자료올리기 첫 칸에 붙여넣고 저장(F8)');
   } catch (e) {
@@ -959,7 +960,8 @@ $('b2').addEventListener('click', async () => {
 $('b2d').addEventListener('click', () => {
   try {
     const r = build2();
-    if (!r.lines_n) { say($('s2'), 'err', '매칭된 송장이 없습니다.', '로젠 출력 파일에 주문번호가 비어 있습니다.'); return; }
+    if (!r.lines_n) { say($('s2'), 'err', '매칭된 송장이 0건이라 복사할 내용이 없습니다.',
+      '주문번호로도, 이름·전화로도 못 이었습니다. 두 파일이 같은 날 물량이 맞는지, 로젠 출력에 운송장번호가 있는지 확인하세요. 위 요약의 «못 찾은 상자» 목록이 단서입니다.'); return; }
     download(new Blob([tsv2], { type: 'text/plain;charset=utf-8' }), '송장업로드.txt');
     say($('s2'), 'ok', `${r.lines_n}줄 → 송장업로드.txt`);
   } catch (e) { say($('s2'), 'err', '변환 실패', e.message); }
