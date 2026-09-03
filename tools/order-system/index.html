@@ -88,6 +88,26 @@
   .pvfoot .bookrow .bookbtns{display:flex;gap:6px;flex-shrink:0}
   .syncok{color:#2e7d32}
   .syncbad{color:#c0392b;font-weight:700}
+  .ptree .pcat{font-weight:700;font-size:12px;color:#1d3559;margin:12px 0 4px}
+  .ptree .pgrp{font-size:11px;color:var(--muted);margin:8px 0 2px}
+  .ptree .prow{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--line)}
+  .ptree .prow img{width:34px;height:34px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:6px;flex:0 0 auto}
+  .ptree .prow .pn{flex:1;min-width:0}
+  .ptree .prow .pn b{display:block;font-size:12px;font-weight:600}
+  .ptree .prow .pn span{font-size:10px;color:var(--muted)}
+  .badge-new{background:#e8f3ea;color:#2e7d32;border-radius:4px;padding:1px 5px;font-size:9px;margin-left:4px}
+  .badge-ed{background:#fdf0dd;color:#8a5a12;border-radius:4px;padding:1px 5px;font-size:9px;margin-left:4px}
+  .pform{display:grid;grid-template-columns:110px 1fr;gap:8px 10px;align-items:center;font-size:12px}
+  .pform label{color:var(--muted);font-size:11px}
+  .pform input[type=text],.pform select,.pform textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;font:inherit;font-size:12px;box-sizing:border-box}
+  .pform .full{grid-column:1/3}
+  .pform .hint2{font-size:10px;color:var(--muted);margin-top:2px}
+  .photobox{display:flex;align-items:center;gap:10px}
+  .photobox img{width:64px;height:64px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px}
+  header.top .topnav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  header.top .topnav button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.20);color:#e8eef8;border-radius:8px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+  header.top .topnav button:hover{background:rgba(255,255,255,.20);color:#fff}
+  @media(max-width:720px){header.top{flex-wrap:wrap}header.top .sub{display:none}header.top .topnav{width:100%;margin-left:0}}
   .modal-bg{position:fixed;inset:0;background:rgba(19,37,64,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .modal-bg.show{display:flex}
   .modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
@@ -127,7 +147,7 @@
 </style>
 </head>
 <body>
-<header class="top"><div class="logo">KANT<b>·</b>발주</div><div class="sub">중국 공장 발주 관리 시스템</div></header>
+<header class="top"><div class="logo">KANT<b>·</b>발주</div><div class="sub">중국 공장 발주 관리 시스템</div><nav class="topnav"><button id="btnHistory">월별 발주 내역</button><button id="btnProducts">제품 관리</button><button id="btnManage">발주 목록</button></nav></header>
 <div class="wrap">
   <div class="tabs" id="tabs"></div>
   <div class="infobar">
@@ -149,7 +169,7 @@
         <div class="totrow"><span id="totQty">총 0개</span></div>
         <div class="editbar" id="editBar" style="display:none"><span class="et" id="editInfo"></span><span class="bookbtns"><button class="btn ghost sm" id="btnEditCancel">수정 취소</button></span></div>
         <div class="bookrow"><span id="syncInfo" class="gcount">서버 확인 중…</span><span class="bookbtns"><button class="btn ghost sm" id="btnSyncPull">서버에서 새로고침</button></span></div>
-        <div class="bookrow"><span id="bookInfo" class="gcount">이번 달 첫 발주</span><span class="bookbtns"><button class="btn ghost sm" id="btnManage">발주 목록 관리</button><button class="btn ghost sm" id="btnNewBook">이 달 비우기</button></span></div>
+        <div class="bookrow"><span id="bookInfo" class="gcount">이번 달 첫 발주</span><span class="bookbtns"><button class="btn ghost sm" id="btnNewBook">이 달 비우기</button></span></div>
         <div class="actions">
           <button class="btn ghost" id="btnClear">초기화</button>
           <button class="btn" id="btnCopy">표 복사</button>
@@ -178,6 +198,24 @@
   </div>
   <input type="file" id="mgrFile" accept=".xlsx" multiple style="display:none">
 </div>
+<div class="modal-bg" id="pmgr">
+  <div class="modal">
+    <div class="mhead"><h3 id="pmgrTitle">제품 관리</h3><button class="x" id="pmgrClose">&times;</button></div>
+    <div class="mbar" id="pmgrBar"></div>
+    <div class="mbody"><div id="pmgrBody"></div></div>
+    <div class="mfoot" id="pmgrFoot"></div>
+  </div>
+  <input type="file" id="pmgrPhoto" accept="image/*" style="display:none">
+</div>
+<div class="modal-bg" id="hist">
+  <div class="modal">
+    <div class="mhead"><h3>월별 발주 내역</h3><button class="x" id="histClose">&times;</button></div>
+    <div class="mbar" id="histBar"></div>
+    <div class="mbody"><div id="histBody"></div></div>
+    <div class="mfoot"><span class="gcount" id="histSum"></span><span style="flex:1"></span>
+      <button class="btn ghost sm" id="histReload">새로고침</button><button class="btn sm" id="histDone">닫기</button></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <script>
 const CATALOG = {"inhai":{"label":"인하이","sections":[{"cat":"5MM 마그네틱","groups":[{"name":"레일 [블랙]","products":[{"name":"5mm 마그네틱 레일 A타입 1M 블랙","spec":"D12 x H17 / 1M","page":3,"note":"타공 13x17","im":0,"single":true,"options":[{"label":"기본","color":"","temp":"","im":0}]},{"name":"5mm 마그네틱 레일 A타입 2M 블랙","spec":"D12 x H17 / 2M","page":3,"note":"타공 13x17","im":0,"single":true,"options":[{"label":"기본","color":"","temp":"","im":0}]},{"name":"5mm 마그네틱 레일 B타입 1M 블랙","spec":"D37.2 x H17 / 1M","page":3,"note":"타공 13x17","im":1,"single":true,"options":[{"label":"기본","color":"","temp":"","im":1}]},{"name":"5mm 마그네틱 레일 B타입 2M 블랙","spec":"D37.2 x H17 / 2M","page":3,"note":"타공 13x17","im":1,"single":true,"options":[{"label":"기본","color":"","temp":"","im":1}]}]},{"name":"레일 부속 [블랙]","products":[{"name":"5mm 마그네틱 부속 전원 입력 (레일-안정기 연결) 블랙","spec":"L100 x W5 x H14","page":4,"note":"레일과 안정기 연결시 사용","im":2,"single":true,"options":[{"label":"기본","color":"","temp":"","im":2}]},{"name":"5mm 마그네틱 부속 일자 전원 연결 블랙","spec":"L100 x W5 x H14","page":4,"note":"레일과 레일 연결시 사용","im":3,"single":true,"options":[{"label":"기본","color":"","temp":"","im":3}]},{"name":"5mm 마그네틱 부속 ㄱ자 전원 연결 블랙","spec":"L200 x W5 x H14","page":4,"note":"ㄱ자 코너 연결시 사용","im":4,"single":true,"options":[{"label":"기본","color":"","temp":"","im":4}]},{"name":"5mm 마그네틱 부속 ㄱ자 연결 부속 A타입 (천장형) 블랙","spec":"11 x 17 x 46","page":4,"note":"","im":5,"single":true,"options":[{"label":"기본","color":"","temp":"","im":5}]},{"name":"5mm 마그네틱 부속 ㄱ자 연결 부속 B타입 (천장형) 블랙","spec":"37.2 x 17 x 46","page":4,"note":"","im":5,"single":true,"options":[{"label":"기본","color":"","temp":"","im":5}]},{"name":"5mm 마그네틱 부속 ㄱ자 인코너 연결 부속 A타입 (벽면형) 블랙","spec":"11 x 17 x 52","page":4,"note":"","im":6,"single":true,"options":[{"label":"기본","color":"","temp":"","im":6}]},{"name":"5mm 마그네틱 부속 ㄱ자 인코너 연결 부속 B타입 (벽면형) 블랙","spec":"37.2 x 17 x 52","page":4,"note":"","im":6,"single":true,"options":[{"label":"기본","color":"","temp":"","im":6}]}]},{"name":"레일 부속 [공용]","products":[{"name":"5mm 마그네틱 레일 전용피스","spec":"","page":"","note":"레일 목작업 체결용 전용피스(칼블럭 포함)","im":204,"single":true,"options":[{"label":"기본","color":"","temp":"","im":204}]}]},{"name":"등기구 [블랙]","products":[{"name":"5mm 마그네틱 FL250 라인확산 블랙 5W","spec":"250 x 5 x 14","page":5,"note":"SANAN CHIP","im":7,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":7},{"label":"4000K","color":"","temp":"4000K","im":7}]},{"name":"5mm 마그네틱 FL500 라인확산 블랙 10W","spec":"500 x 5 x 14","page":5,"note":"SANAN CHIP","im":7,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":7},{"label":"4000K","color":"","temp":"4000K","im":7}]},{"name":"5mm 마그네틱 FL1000 라인확산 블랙 16W","spec":"1000 x 5 x 14","page":5,"note":"SANAN CHIP","im":7,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":7},{"label":"4000K","color":"","temp":"4000K","im":7}]},{"name":"5mm 마그네틱 GL12 멀티집중 블랙 8W","spec":"300 x 5 x 14","page":5,"note":"OSRAM CHIP","im":8,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":8},{"label":"4000K","color":"","temp":"4000K","im":8}]},{"name":"5mm 마그네틱 GL24 멀티집중 블랙 16W","spec":"600 x 5 x 14","page":5,"note":"OSRAM CHIP","im":8,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":8},{"label":"4000K","color":"","temp":"4000K","im":8}]},{"name":"5mm 마그네틱 GLM12 멀티폴더집중 블랙 8W","spec":"300 x 5 x 68","page":5,"note":"OSRAM CHIP","im":9,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":9},{"label":"4000K","color":"","temp":"4000K","im":9}]},{"name":"5mm 마그네틱 SL4 스팟스포트 블랙 4W","spec":"Ø28 x 54 x 126","page":5,"note":"BRIDGELUX CHIP","im":10,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":10},{"label":"4000K","color":"","temp":"4000K","im":10}]},{"name":"5mm 마그네틱 SL7 스팟스포트 블랙 7W","spec":"Ø34 x 58 x 126","page":5,"note":"BRIDGELUX CHIP","im":10,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":10},{"label":"4000K","color":"","temp":"4000K","im":10}]},{"name":"5mm 마그네틱 SL10 스팟스포트 블랙 10W","spec":"Ø35 x 80 x 126","page":5,"note":"BRIDGELUX CHIP","im":10,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":10},{"label":"4000K","color":"","temp":"4000K","im":10}]},{"name":"5mm 마그네틱 SDL10 스팟스포트숏 블랙 10W","spec":"Ø80 x 36 x 126","page":5,"note":"BRIDGELUX CHIP","im":11,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":11},{"label":"4000K","color":"","temp":"4000K","im":11}]},{"name":"5mm 마그네틱 SDH10 스팟스포트롱 블랙 10W","spec":"","page":5,"note":"BRIDGELUX CHIP / 원문 사이즈 'RHC'로만 표기(불명확), 니켈 기준 Ø52x60x137 추정","im":12,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":12},{"label":"4000K","color":"","temp":"4000K","im":12}]},{"name":"5mm 마그네틱 숏스틱 P/D집중 블랙 7W","spec":"Ø43 x 85 x 126 / 줄길이 1350mm","page":5,"note":"BRIDGELUX CHIP","im":13,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":13},{"label":"4000K","color":"","temp":"4000K","im":13}]},{"name":"5mm 마그네틱 롱스틱 P/D집중 블랙 4W","spec":"Ø25 x 300 x 126 / 줄길이 1350mm","page":5,"note":"BRIDGELUX CHIP","im":14,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":14},{"label":"4000K","color":"","temp":"4000K","im":14}]},{"name":"5mm 마그네틱 TB300 튜브확산 블랙 5W","spec":"Ø16.5 x 300 x 126","page":6,"note":"OSRAM CHIP / 색온도 4000K만 제공","im":15,"single":false,"options":[{"label":"4000K","color":"","temp":"4000K","im":15}]},{"name":"5mm 마그네틱 TB500 튜브확산 블랙 10W","spec":"Ø16.5 x 500 x 126","page":6,"note":"OSRAM CHIP / 색온도 4000K만 제공","im":15,"single":false,"options":[{"label":"4000K","color":"","temp":"4000K","im":15}]},{"name":"5mm 마그네틱 꼬깔 스포트 블랙 4W","spec":"Ø68 x 45 x 126","page":6,"note":"BRIDGELUX CHIP","im":16,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":16},{"label":"4000K","color":"","temp":"4000K","im":16}]},{"name":"5mm 마그네틱 LF4 스팟자바라 블랙 4W","spec":"33 x 58 x 126","page":6,"note":"BRIDGELUX CHIP","im":17,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":17},{"label":"4000K","color":"","temp":"4000K","im":17}]},{"name":"5mm 마그네틱 NEON 실리콘라인확산 블랙 10W","spec":"1000 x 6 x 12","page":6,"note":"OSRAM CHIP","im":18,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":18},{"label":"4000K","color":"","temp":"4000K","im":18}]},{"name":"5mm 마그네틱 BP 볼직부 블랙 7W","spec":"Ø50 x 14 x 126","page":6,"note":"OSRAM CHIP","im":19,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":19},{"label":"4000K","color":"","temp":"4000K","im":19}]},{"name":"5mm 스피커 블랙 7W","spec":"Ø70 x 110 x 126","page":6,"note":"마그네틱 스피커(조명 아님)","im":20,"single":true,"options":[{"label":"기본","color":"","temp":"","im":20}]}]},{"name":"레일 [화이트]","products":[{"name":"5mm 마그네틱 레일 A타입 1M 화이트","spec":"D12 x H17 / 1M","page":7,"note":"타공 13x17 / 화이트는 A타입만 게재","im":22,"single":true,"options":[{"label":"기본","color":"","temp":"","im":22}]},{"name":"5mm 마그네틱 레일 A타입 2M 화이트","spec":"D12 x H17 / 2M","page":7,"note":"타공 13x17 / 화이트는 A타입만 게재","im":22,"single":true,"options":[{"label":"기본","color":"","temp":"","im":22}]}]},{"name":"레일 부속 [화이트]","products":[{"name":"5mm 마그네틱 부속 전원 입력 (레일-안정기 연결) 화이트","spec":"L100 x W5 x H14","page":8,"note":"레일과 안정기 연결시 사용","im":23,"single":true,"options":[{"label":"기본","color":"","temp":"","im":23}]},{"name":"5mm 마그네틱 부속 일자 전원 연결 화이트","spec":"L100 x W5 x H14","page":8,"note":"레일과 레일 연결시 사용","im":24,"single":true,"options":[{"label":"기본","color":"","temp":"","im":24}]},{"name":"5mm 마그네틱 부속 ㄱ자 전원 연결 화이트","spec":"L200 x W5 x H14","page":8,"note":"ㄱ자 코너 연결시 사용","im":25,"single":true,"options":[{"label":"기본","color":"","temp":"","im":25}]},{"name":"5mm 마그네틱 부속 ㄱ자 연결 부속 A타입 (천장형) 화이트","spec":"11 x 17 x 46","page":8,"note":"","im":26,"single":true,"options":[{"label":"기본","color":"","temp":"","im":26}]},{"name":"5mm 마그네틱 부속 ㄱ자 연결 부속 B타입 (천장형) 화이트","spec":"37.2 x 17 x 46","page":8,"note":"","im":26,"single":true,"options":[{"label":"기본","color":"","temp":"","im":26}]},{"name":"5mm 마그네틱 부속 ㄱ자 인코너 연결 부속 A타입 (벽면형) 화이트","spec":"11 x 17 x 52","page":8,"note":"","im":27,"single":true,"options":[{"label":"기본","color":"","temp":"","im":27}]},{"name":"5mm 마그네틱 부속 ㄱ자 인코너 연결 부속 B타입 (벽면형) 화이트","spec":"37.2 x 17 x 52","page":8,"note":"","im":27,"single":true,"options":[{"label":"기본","color":"","temp":"","im":27}]}]},{"name":"등기구 [화이트]","products":[{"name":"5mm 마그네틱 FL250 라인확산 화이트 5W","spec":"250 x 5 x 14","page":9,"note":"SANAN CHIP","im":28,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":28},{"label":"4000K","color":"","temp":"4000K","im":28}]},{"name":"5mm 마그네틱 FL500 라인확산 화이트 10W","spec":"500 x 5 x 14","page":9,"note":"SANAN CHIP","im":28,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":28},{"label":"4000K","color":"","temp":"4000K","im":28}]},{"name":"5mm 마그네틱 FL1000 라인확산 화이트 16W","spec":"1000 x 5 x 14","page":9,"note":"SANAN CHIP","im":28,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":28},{"label":"4000K","color":"","temp":"4000K","im":28}]},{"name":"5mm 마그네틱 GL12 멀티집중 화이트 8W","spec":"300 x 5 x 14","page":9,"note":"OSRAM CHIP","im":29,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":29},{"label":"4000K","color":"","temp":"4000K","im":29}]},{"name":"5mm 마그네틱 GL24 멀티집중 화이트 16W","spec":"600 x 5 x 14","page":9,"note":"OSRAM CHIP / 블랙(76,000)과 단가 상이","im":29,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":29},{"label":"4000K","color":"","temp":"4000K","im":29}]},{"name":"5mm 마그네틱 GLM12 멀티폴더집중 화이트 8W","spec":"300 x 5 x 68","page":9,"note":"OSRAM CHIP","im":30,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":30},{"label":"4000K","color":"","temp":"4000K","im":30}]},{"name":"5mm 마그네틱 SL7 스팟스포트 화이트 7W","spec":"Ø34 x 58 x 126","page":9,"note":"BRIDGELUX CHIP / 화이트는 SL7만 게재","im":31,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":31},{"label":"4000K","color":"","temp":"4000K","im":31}]},{"name":"5mm 마그네틱 꼬깔 스포트 화이트 4W","spec":"Ø68 x 45 x 126","page":9,"note":"BRIDGELUX CHIP / 블랙(36,000)과 단가 상이","im":32,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":32},{"label":"4000K","color":"","temp":"4000K","im":32}]},{"name":"5mm 마그네틱 NEON 실리콘라인확산 화이트 10W","spec":"1000 x 6 x 12","page":9,"note":"OSRAM CHIP / 블랙(26,000)과 단가 상이","im":33,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":33},{"label":"4000K","color":"","temp":"4000K","im":33}]},{"name":"5mm 마그네틱 숏스틱 P/D집중 화이트 7W","spec":"Ø43 x 85 x 126 / 줄길이 1350mm","page":9,"note":"BRIDGELUX CHIP","im":34,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":34},{"label":"4000K","color":"","temp":"4000K","im":34}]},{"name":"5mm 마그네틱 롱스틱 P/D집중 화이트 4W","spec":"Ø25 x 300 x 126 / 줄길이 1350mm","page":9,"note":"BRIDGELUX CHIP","im":35,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":35},{"label":"4000K","color":"","temp":"4000K","im":35}]}]},{"name":"레일 [니켈]","products":[{"name":"5mm 마그네틱 레일 A타입 1M 니켈","spec":"D12 x H17 / 1M","page":10,"note":"타공 13x17 / 니켈은 A타입만 게재","im":36,"single":true,"options":[{"label":"기본","color":"","temp":"","im":36}]},{"name":"5mm 마그네틱 레일 A타입 2M 니켈","spec":"D12 x H17 / 2M","page":10,"note":"타공 13x17 / 니켈은 A타입만 게재","im":36,"single":true,"options":[{"label":"기본","color":"","temp":"","im":36}]}]},{"name":"레일 부속 [니켈]","products":[{"name":"5mm 마그네틱 부속 전원 입력 (레일-안정기 연결) 니켈","spec":"L100 x W5 x H14","page":11,"note":"레일과 안정기 연결시 사용","im":37,"single":true,"options":[{"label":"기본","color":"","temp":"","im":37}]},{"name":"5mm 마그네틱 부속 일자 전원 연결 니켈","spec":"L100 x W5 x H14","page":11,"note":"레일과 레일 연결시 사용","im":38,"single":true,"options":[{"label":"기본","color":"","temp":"","im":38}]},{"name":"5mm 마그네틱 부속 ㄱ자 전원 연결 니켈","spec":"L200 x W5 x H14","page":11,"note":"ㄱ자 코너 연결시 사용","im":39,"single":true,"options":[{"label":"기본","color":"","temp":"","im":39}]},{"name":"5mm 마그네틱 부속 ㄱ자 연결 부속 A타입 (천장형) 니켈","spec":"11 x 17 x 46","page":11,"note":"","im":40,"single":true,"options":[{"label":"기본","color":"","temp":"","im":40}]},{"name":"5mm 마그네틱 부속 ㄱ자 연결 부속 B타입 (천장형) 니켈","spec":"37.2 x 17 x 46","page":11,"note":"","im":40,"single":true,"options":[{"label":"기본","color":"","temp":"","im":40}]},{"name":"5mm 마그네틱 부속 ㄱ자 인코너 연결 부속 A타입 (벽면형) 니켈","spec":"11 x 17 x 52","page":11,"note":"","im":41,"single":true,"options":[{"label":"기본","color":"","temp":"","im":41}]},{"name":"5mm 마그네틱 부속 ㄱ자 인코너 연결 부속 B타입 (벽면형) 니켈","spec":"37.2 x 17 x 52","page":11,"note":"","im":41,"single":true,"options":[{"label":"기본","color":"","temp":"","im":41}]}]},{"name":"등기구 [니켈]","products":[{"name":"5mm 마그네틱 FL250 라인확산 니켈 5W","spec":"250 x 5 x 14","page":12,"note":"SANAN CHIP","im":42,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":42},{"label":"4000K","color":"","temp":"4000K","im":42}]},{"name":"5mm 마그네틱 FL500 라인확산 니켈 10W","spec":"500 x 5 x 14","page":12,"note":"SANAN CHIP","im":42,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":42},{"label":"4000K","color":"","temp":"4000K","im":42}]},{"name":"5mm 마그네틱 FL1000 라인확산 니켈 16W","spec":"1000 x 5 x 14","page":12,"note":"SANAN CHIP","im":42,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":42},{"label":"4000K","color":"","temp":"4000K","im":42}]},{"name":"5mm 마그네틱 GL12 멀티집중 니켈 8W","spec":"300 x 5 x 14","page":12,"note":"OSRAM CHIP / 색상별 단가 상이","im":43,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":43},{"label":"4000K","color":"","temp":"4000K","im":43}]},{"name":"5mm 마그네틱 GL24 멀티집중 니켈 16W","spec":"600 x 5 x 14","page":12,"note":"OSRAM CHIP / 색상별 단가 상이","im":43,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":43},{"label":"4000K","color":"","temp":"4000K","im":43}]},{"name":"5mm 마그네틱 SL4 스팟스포트 니켈 4W","spec":"Ø28 x 54 x 126","page":12,"note":"BRIDGELUX CHIP / 색상별 단가 상이","im":44,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":44},{"label":"4000K","color":"","temp":"4000K","im":44}]},{"name":"5mm 마그네틱 SL7 스팟스포트 니켈 7W","spec":"Ø34 x 58 x 126","page":12,"note":"BRIDGELUX CHIP / 색상별 단가 상이","im":44,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":44},{"label":"4000K","color":"","temp":"4000K","im":44}]},{"name":"5mm 마그네틱 꼬깔 스포트 니켈 4W","spec":"Ø68 x 45 x 126","page":12,"note":"BRIDGELUX CHIP","im":45,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":45},{"label":"4000K","color":"","temp":"4000K","im":45}]},{"name":"5mm 마그네틱 SDL10 스팟스포트숏 니켈 10W","spec":"Ø80 x 36 x 126","page":12,"note":"BRIDGELUX CHIP","im":46,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":46},{"label":"4000K","color":"","temp":"4000K","im":46}]},{"name":"5mm 마그네틱 SDH10 스팟스포트롱 니켈 10W","spec":"Ø52 x 60 x 137","page":12,"note":"BRIDGELUX CHIP / 원문 모델명 'SDL10 10W'로 오기(SDH 섹션)","im":47,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":47},{"label":"4000K","color":"","temp":"4000K","im":47}]},{"name":"5mm 마그네틱 숏스틱 P/D집중 니켈 7W","spec":"Ø43 x 85 x 126 / 줄길이 1350mm","page":12,"note":"BRIDGELUX CHIP","im":48,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":48},{"label":"4000K","color":"","temp":"4000K","im":48}]},{"name":"5mm 마그네틱 롱스틱 P/D집중 니켈 4W","spec":"Ø25 x 300 x 126 / 줄길이 1350mm","page":12,"note":"BRIDGELUX CHIP","im":49,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":49},{"label":"4000K","color":"","temp":"4000K","im":49}]}]},{"name":"레일 [오렌지]","products":[{"name":"5mm 마그네틱 레일 A타입 1M 오렌지","spec":"D12 x H17 / 1M","page":13,"note":"타공 13x17 / 오렌지는 A타입 1M만 게재","im":50,"single":true,"options":[{"label":"기본","color":"","temp":"","im":50}]}]},{"name":"레일 부속 [오렌지]","products":[{"name":"5mm 마그네틱 부속 전원 입력 (레일-안정기 연결) 오렌지","spec":"L100 x W5 x H14","page":13,"note":"레일과 안정기 연결시 사용","im":51,"single":true,"options":[{"label":"기본","color":"","temp":"","im":51}]},{"name":"5mm 마그네틱 부속 일자 전원 연결 오렌지","spec":"L100 x W5 x H14","page":13,"note":"레일과 레일 연결시 사용","im":52,"single":true,"options":[{"label":"기본","color":"","temp":"","im":52}]},{"name":"5mm 마그네틱 부속 ㄱ자 전원 연결 오렌지","spec":"L200 x W5 x H14","page":13,"note":"ㄱ자 코너 연결시 사용 / [입고예정]","im":53,"single":true,"options":[{"label":"기본","color":"","temp":"","im":53}]},{"name":"5mm 마그네틱 부속 ㄱ자 연결 부속 (천장형) 오렌지","spec":"11 x 17 x 46","page":13,"note":"[입고예정] / 오렌지는 단일 사이즈(A타입)만 게재","im":54,"single":true,"options":[{"label":"기본","color":"","temp":"","im":54}]},{"name":"5mm 마그네틱 부속 ㄱ자 인코너 연결 부속 (벽면형) 오렌지","spec":"11 x 17 x 52","page":13,"note":"[입고예정] / 오렌지는 단일 사이즈(A타입)만 게재","im":55,"single":true,"options":[{"label":"기본","color":"","temp":"","im":55}]}]},{"name":"등기구 [오렌지]","products":[{"name":"5mm 마그네틱 FL250 라인확산 오렌지 5W","spec":"250 x 5 x 14","page":14,"note":"SANAN CHIP","im":56,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":56},{"label":"4000K","color":"","temp":"4000K","im":56}]},{"name":"5mm 마그네틱 FL500 라인확산 오렌지 10W","spec":"500 x 5 x 14","page":14,"note":"SANAN CHIP","im":56,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":56},{"label":"4000K","color":"","temp":"4000K","im":56}]},{"name":"5mm 마그네틱 FL1000 라인확산 오렌지 16W","spec":"1000 x 5 x 14","page":14,"note":"SANAN CHIP","im":56,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":56},{"label":"4000K","color":"","temp":"4000K","im":56}]},{"name":"5mm 마그네틱 SL4 스팟스포트 오렌지 4W","spec":"Ø28 x 54 x 126","page":14,"note":"BRIDGELUX CHIP / 색상별 단가 상이","im":57,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":57},{"label":"4000K","color":"","temp":"4000K","im":57}]},{"name":"5mm 마그네틱 SL7 스팟스포트 오렌지 7W","spec":"Ø34 x 58 x 126","page":14,"note":"BRIDGELUX CHIP / 색상별 단가 상이","im":57,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":57},{"label":"4000K","color":"","temp":"4000K","im":57}]},{"name":"5mm 마그네틱 꼬깔 스포트 오렌지 4W","spec":"Ø68 x 45 x 126","page":14,"note":"BRIDGELUX CHIP / 색상별 단가 상이","im":58,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":58},{"label":"4000K","color":"","temp":"4000K","im":58}]},{"name":"5mm 마그네틱 SDL10 스팟스포트숏 오렌지 10W","spec":"Ø80 x 36 x 126","page":14,"note":"BRIDGELUX CHIP","im":59,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":59},{"label":"4000K","color":"","temp":"4000K","im":59}]}]}]},{"cat":"15MM 1P 마그네틱","groups":[{"name":"레일 [블랙]","products":[{"name":"15mm 1P 마그네틱 레일 A타입 1M 블랙","spec":"W1000 x D19 x H13 (mm)","page":17,"note":"타공 20×12mm, VAT 별도","im":61,"single":true,"options":[{"label":"기본","color":"","temp":"","im":61}]},{"name":"15mm 1P 마그네틱 레일 A타입 2M 블랙","spec":"W2000 x D19 x H13 (mm)","page":17,"note":"타공 20×12mm, VAT 별도","im":61,"single":true,"options":[{"label":"기본","color":"","temp":"","im":61}]},{"name":"15mm 1P 마그네틱 레일 B타입 1M 블랙","spec":"W1000 x D48.5 x H13 (mm)","page":17,"note":"VAT 별도","im":62,"single":true,"options":[{"label":"기본","color":"","temp":"","im":62}]},{"name":"15mm 1P 마그네틱 레일 B타입 2M 블랙","spec":"W2000 x D48.5 x H13 (mm)","page":17,"note":"VAT 별도","im":62,"single":true,"options":[{"label":"기본","color":"","temp":"","im":62}]}]},{"name":"레일 부속 [블랙]","products":[{"name":"15mm 1P 마그네틱 부속 전원 입력 블랙","spec":"L78 x W15 x H14 (mm)","page":18,"note":"레일과 안정기 연결시 사용, VAT 별도","im":63,"single":true,"options":[{"label":"기본","color":"","temp":"","im":63}]},{"name":"15mm 1P 마그네틱 부속 일자 전원 연결 블랙","spec":"L118 x W15 x H14 (mm)","page":18,"note":"레일과 레일 연결시 사용, VAT 별도","im":64,"single":true,"options":[{"label":"기본","color":"","temp":"","im":64}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 전원 연결 블랙","spec":"W78 x D15 x H14 (mm)","page":18,"note":"ㄱ자 코너 연결시 사용, VAT 별도","im":65,"single":true,"options":[{"label":"기본","color":"","temp":"","im":65}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 커버 전원 연결 블랙","spec":"W90 x D90 x H15 (mm)","page":18,"note":"ㄱ자 코너 연결시 사용, VAT 별도","im":66,"single":true,"options":[{"label":"기본","color":"","temp":"","im":66}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 연결 부속 블랙","spec":"A타입 42×42 (mm)","page":18,"note":"천장형, VAT 별도","im":67,"single":true,"options":[{"label":"기본","color":"","temp":"","im":67}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 인코너 연결 부속 블랙","spec":"A타입 42×42 (mm)","page":18,"note":"벽면형, VAT 별도","im":68,"single":true,"options":[{"label":"기본","color":"","temp":"","im":68}]}]},{"name":"등기구 [블랙]","products":[{"name":"15mm 1P 마그네틱 SDL10 스포트직부숏 블랙 10W","spec":"Ø80 x H36 x W101 mm","page":19,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":69,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":69},{"label":"4000K","color":"","temp":"4000K","im":69}]},{"name":"15mm 1P 마그네틱 TW10 틸팅직부 블랙 10W","spec":"Ø80 x H35 x W101 mm","page":19,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":70,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":70},{"label":"4000K","color":"","temp":"4000K","im":70}]},{"name":"15mm 1P 마그네틱 SL3 스포트집중 블랙 3W","spec":"Ø22 x H48 x W101 mm","page":19,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":71,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":71},{"label":"4000K","color":"","temp":"4000K","im":71}]},{"name":"15mm 1P 마그네틱 SL5 스포트집중 블랙 5W","spec":"Ø33 x H58 x W101 mm","page":19,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":72,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":72},{"label":"4000K","color":"","temp":"4000K","im":72}]},{"name":"15mm 1P 마그네틱 GL300 멀티집중 블랙 6W","spec":"D15 x W300 mm","page":19,"note":"빛각도 60°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":73,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":73},{"label":"4000K","color":"","temp":"4000K","im":73}]},{"name":"15mm 1P 마그네틱 GL600 멀티집중 블랙 12W","spec":"D15 x W600 mm","page":19,"note":"빛각도 60°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":73,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":73},{"label":"4000K","color":"","temp":"4000K","im":73}]},{"name":"15mm 1P 마그네틱 FL300 라인확산 블랙 6W","spec":"D15 x W300 mm","page":19,"note":"빛각도 100°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":74,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":74},{"label":"4000K","color":"","temp":"4000K","im":74}]},{"name":"15mm 1P 마그네틱 FL600 라인확산 블랙 12W","spec":"D15 x W600 mm","page":19,"note":"빛각도 100°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":74,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":74},{"label":"4000K","color":"","temp":"4000K","im":74}]}]},{"name":"레일 [화이트]","products":[{"name":"15mm 1P 마그네틱 레일 A타입 1M 화이트","spec":"W1000 x D19 x H13 (mm)","page":20,"note":"타공 20×12mm, VAT 별도","im":75,"single":true,"options":[{"label":"기본","color":"","temp":"","im":75}]},{"name":"15mm 1P 마그네틱 레일 A타입 2M 화이트","spec":"W2000 x D19 x H13 (mm)","page":20,"note":"타공 20×12mm, VAT 별도","im":75,"single":true,"options":[{"label":"기본","color":"","temp":"","im":75}]},{"name":"15mm 1P 마그네틱 레일 B타입 1M 화이트","spec":"W1000 x D48.5 x H13 (mm)","page":20,"note":"VAT 별도","im":76,"single":true,"options":[{"label":"기본","color":"","temp":"","im":76}]},{"name":"15mm 1P 마그네틱 레일 B타입 2M 화이트","spec":"W2000 x D48.5 x H13 (mm)","page":20,"note":"VAT 별도","im":76,"single":true,"options":[{"label":"기본","color":"","temp":"","im":76}]}]},{"name":"레일 부속 [화이트]","products":[{"name":"15mm 1P 마그네틱 부속 전원 입력 화이트","spec":"L78 x W15 x H14 (mm)","page":21,"note":"레일과 안정기 연결시 사용, VAT 별도","im":77,"single":true,"options":[{"label":"기본","color":"","temp":"","im":77}]},{"name":"15mm 1P 마그네틱 부속 일자 전원 연결 화이트","spec":"L118 x W15 x H14 (mm)","page":21,"note":"레일과 레일 연결시 사용, VAT 별도","im":78,"single":true,"options":[{"label":"기본","color":"","temp":"","im":78}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 전원 연결 화이트","spec":"W78 x D15 x H14 (mm)","page":21,"note":"ㄱ자 코너 연결시 사용, VAT 별도","im":79,"single":true,"options":[{"label":"기본","color":"","temp":"","im":79}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 커버 전원 연결 화이트","spec":"W90 x D90 x H15 (mm)","page":21,"note":"ㄱ자 코너 연결시 사용, VAT 별도","im":80,"single":true,"options":[{"label":"기본","color":"","temp":"","im":80}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 연결 부속 화이트","spec":"A타입 42×42 (mm)","page":21,"note":"천장형, VAT 별도","im":81,"single":true,"options":[{"label":"기본","color":"","temp":"","im":81}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 인코너 연결 부속 화이트","spec":"A타입 42×42 (mm)","page":21,"note":"벽면형, VAT 별도","im":82,"single":true,"options":[{"label":"기본","color":"","temp":"","im":82}]}]},{"name":"등기구 [화이트]","products":[{"name":"15mm 1P 마그네틱 SDL10 스포트직부숏 화이트 10W","spec":"Ø80 x H36 x W101 mm","page":22,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":83,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":83},{"label":"4000K","color":"","temp":"4000K","im":83}]},{"name":"15mm 1P 마그네틱 TW10 스포트직부롱 화이트 10W","spec":"Ø80 x H35 x W101 mm","page":22,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":84,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":84},{"label":"4000K","color":"","temp":"4000K","im":84}]},{"name":"15mm 1P 마그네틱 SL3 스포트집중 화이트 3W","spec":"Ø22 x H48 x W101 mm","page":22,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":85,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":85},{"label":"4000K","color":"","temp":"4000K","im":85}]},{"name":"15mm 1P 마그네틱 SL5 스포트집중 화이트 5W","spec":"Ø33 x H58 x W101 mm","page":22,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":86,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":86},{"label":"4000K","color":"","temp":"4000K","im":86}]},{"name":"15mm 1P 마그네틱 GL300 멀티집중 화이트 6W","spec":"D15 x W300 mm","page":22,"note":"빛각도 60°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":87,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":87},{"label":"4000K","color":"","temp":"4000K","im":87}]},{"name":"15mm 1P 마그네틱 GL600 멀티집중 화이트 12W","spec":"D15 x W600 mm","page":22,"note":"빛각도 60°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":87,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":87},{"label":"4000K","color":"","temp":"4000K","im":87}]},{"name":"15mm 1P 마그네틱 FL300 라인확산 화이트 6W","spec":"D15 x W300 mm","page":22,"note":"빛각도 100°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":88,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":88},{"label":"4000K","color":"","temp":"4000K","im":88}]},{"name":"15mm 1P 마그네틱 FL600 라인확산 화이트 12W","spec":"D15 x W600 mm","page":22,"note":"빛각도 100°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":88,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":88},{"label":"4000K","color":"","temp":"4000K","im":88}]}]},{"name":"레일 [니켈]","products":[{"name":"15mm 1P 마그네틱 레일 A타입 1M 니켈","spec":"W1000 x D19 x H13 (mm)","page":23,"note":"타공 20×12mm, VAT 별도","im":89,"single":true,"options":[{"label":"기본","color":"","temp":"","im":89}]},{"name":"15mm 1P 마그네틱 레일 A타입 2M 니켈","spec":"W2000 x D19 x H13 (mm)","page":23,"note":"타공 20×12mm, VAT 별도","im":89,"single":true,"options":[{"label":"기본","color":"","temp":"","im":89}]},{"name":"15mm 1P 마그네틱 레일 B타입 1M 니켈","spec":"W1000 x D48.5 x H13 (mm)","page":23,"note":"VAT 별도","im":90,"single":true,"options":[{"label":"기본","color":"","temp":"","im":90}]},{"name":"15mm 1P 마그네틱 레일 B타입 2M 니켈","spec":"W2000 x D48.5 x H13 (mm)","page":23,"note":"VAT 별도","im":90,"single":true,"options":[{"label":"기본","color":"","temp":"","im":90}]}]},{"name":"레일 부속 [니켈]","products":[{"name":"15mm 1P 마그네틱 부속 전원 입력 니켈","spec":"L78 x W15 x H14 (mm)","page":24,"note":"레일과 안정기 연결시 사용, VAT 별도","im":91,"single":true,"options":[{"label":"기본","color":"","temp":"","im":91}]},{"name":"15mm 1P 마그네틱 부속 일자 전원 연결 니켈","spec":"L118 x W15 x H14 (mm)","page":24,"note":"레일과 레일 연결시 사용, VAT 별도","im":92,"single":true,"options":[{"label":"기본","color":"","temp":"","im":92}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 전원 연결 니켈","spec":"W78 x D15 x H14 (mm)","page":24,"note":"ㄱ자 코너 연결시 사용, VAT 별도","im":93,"single":true,"options":[{"label":"기본","color":"","temp":"","im":93}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 커버 전원 연결 니켈","spec":"W90 x D90 x H15 (mm)","page":24,"note":"ㄱ자 코너 연결시 사용, VAT 별도","im":94,"single":true,"options":[{"label":"기본","color":"","temp":"","im":94}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 연결 부속 니켈","spec":"A타입 42×42 (mm)","page":24,"note":"천장형, VAT 별도","im":95,"single":true,"options":[{"label":"기본","color":"","temp":"","im":95}]},{"name":"15mm 1P 마그네틱 부속 ㄱ자 인코너 연결 부속 니켈","spec":"A타입 42×42 (mm)","page":24,"note":"벽면형, VAT 별도","im":96,"single":true,"options":[{"label":"기본","color":"","temp":"","im":96}]}]},{"name":"등기구 [니켈]","products":[{"name":"15mm 1P 마그네틱 SDL10 스포트직부숏 니켈 10W","spec":"Ø80 x H36 x W101 mm","page":25,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":97,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":97},{"label":"4000K","color":"","temp":"4000K","im":97}]},{"name":"15mm 1P 마그네틱 TW10 스포트직부롱 니켈 10W","spec":"Ø80 x H35 x W101 mm","page":25,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":98,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":98},{"label":"4000K","color":"","temp":"4000K","im":98}]},{"name":"15mm 1P 마그네틱 SL3 스포트집중 니켈 3W","spec":"Ø22 x H48 x W101 mm","page":25,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":99,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":99},{"label":"4000K","color":"","temp":"4000K","im":99}]},{"name":"15mm 1P 마그네틱 SL5 스포트집중 니켈 5W","spec":"Ø33 x H58 x W101 mm","page":25,"note":"빛각도 24°, DC 41V, BRIDGELUX CHIP, VAT 별도","im":100,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":100},{"label":"4000K","color":"","temp":"4000K","im":100}]},{"name":"15mm 1P 마그네틱 GL300 멀티집중 니켈 6W","spec":"D15 x W300 mm","page":25,"note":"빛각도 60°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":101,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":101},{"label":"4000K","color":"","temp":"4000K","im":101}]},{"name":"15mm 1P 마그네틱 GL600 멀티집중 니켈 12W","spec":"D15 x W600 mm","page":25,"note":"빛각도 60°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":101,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":101},{"label":"4000K","color":"","temp":"4000K","im":101}]},{"name":"15mm 1P 마그네틱 FL300 라인확산 니켈 6W","spec":"D15 x W300 mm","page":25,"note":"빛각도 100°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":102,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":102},{"label":"4000K","color":"","temp":"4000K","im":102}]},{"name":"15mm 1P 마그네틱 FL600 라인확산 니켈 12W","spec":"D15 x W600 mm","page":25,"note":"빛각도 100°, DC 41V, SANAN CHIP, VAT 별도 / 모델-전력 매칭(300=6W,600=12W)은 추정","im":102,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":102},{"label":"4000K","color":"","temp":"4000K","im":102}]}]}]},{"cat":"멀티매입등","groups":[{"name":"히든 멀티매입등 12구","products":[{"name":"히든 멀티매입등 12구 12W","spec":"W210 x D20 x H28 (mm) / 타공 204 x 14 (mm)","page":38,"note":"타공 14mm. VAT 별도. 5mm 마그네틱용 슬림형. MDF 타공판 300x150x9.5mm","im":104,"single":false,"options":[{"label":"올블랙 3000K","color":"올블랙","temp":"3000K","im":104},{"label":"올블랙 4000K","color":"올블랙","temp":"4000K","im":104},{"label":"올화이트 3000K","color":"올화이트","temp":"3000K","im":105},{"label":"올화이트 4000K","color":"올화이트","temp":"4000K","im":105},{"label":"화이트/블랙 3000K","color":"화이트/블랙","temp":"3000K","im":106},{"label":"화이트/블랙 4000K","color":"화이트/블랙","temp":"4000K","im":106},{"label":"샌드 니켈 3000K","color":"샌드 니켈","temp":"3000K","im":107},{"label":"샌드 니켈 4000K","color":"샌드 니켈","temp":"4000K","im":107}]}]},{"name":"히든 멀티매입등 18구","products":[{"name":"히든 멀티매입등 18구 12W","spec":"W310 x D20 x H28 (mm) / 타공 305 x 14 (mm)","page":39,"note":"타공 14mm. VAT 별도. MDF 타공판 400x150x9.5mm","im":108,"single":false,"options":[{"label":"올블랙 3000K","color":"올블랙","temp":"3000K","im":108},{"label":"올블랙 4000K","color":"올블랙","temp":"4000K","im":108},{"label":"올화이트 3000K","color":"올화이트","temp":"3000K","im":109},{"label":"올화이트 4000K","color":"올화이트","temp":"4000K","im":109},{"label":"화이트/블랙 3000K","color":"화이트/블랙","temp":"3000K","im":110},{"label":"화이트/블랙 4000K","color":"화이트/블랙","temp":"4000K","im":110},{"label":"샌드 니켈 3000K","color":"샌드 니켈","temp":"3000K","im":111},{"label":"샌드 니켈 4000K","color":"샌드 니켈","temp":"4000K","im":111}]}]}]},{"cat":"디퓨저","groups":[{"name":"트림리스 디퓨저","products":[{"name":"트림리스 디퓨저 A타입 68mm","spec":"외경 Ø140 x 69 (mm) / 타공 Ø95 x 70 (mm)","page":129,"note":"CEILING FAN 디퓨저. A타입 내경 68mm. 두께 1.8mm. 중앙커버(분리형)+타공플레이트(ABS)+내부그릴(풍량조절)+메인하우징(설치클립 포함). VAT 별도","im":112,"single":true,"options":[{"label":"기본","color":"","temp":"","im":112}]},{"name":"트림리스 디퓨저 B타입 100mm","spec":"외경 Ø140 x 69 (mm) / 타공 Ø95 x 70 (mm)","page":129,"note":"CEILING FAN 디퓨저. B타입 내경 100mm. 외경/타공은 A타입과 동일. VAT 별도","im":113,"single":true,"options":[{"label":"기본","color":"","temp":"","im":113}]}]}]},{"cat":"트림리스 프레임","groups":[{"name":"A 타입 프레임","products":[{"name":"트림리스 A타입 1구 프레임 화이트","spec":"120 × 120 × 40 (mm) / 타공 123 × 123 (mm) / 시공고 95mm","page":"","note":"Trimless A Type 1ea. 석고(Plaster). 화이트. 트림리스 램프 전용 프레임.","im":217,"single":true,"options":[{"label":"기본","color":"","temp":"","im":217}]},{"name":"트림리스 A타입 2구 프레임 화이트","spec":"190 × 100 × 40 (mm) / 타공 190 × 103 (mm) / 시공고 95mm","page":"","note":"Trimless A Type 2ea. 석고(Plaster). 화이트. 트림리스 램프 전용 프레임. ※카탈로그 표에는 본체 120×120×40으로 적혀 있으나 타공(190×103)·도면과 맞지 않아 도면값 반영.","im":218,"single":true,"options":[{"label":"기본","color":"","temp":"","im":218}]},{"name":"트림리스 A타입 3구 프레임 화이트","spec":"280 × 100 × 40 (mm) / 타공 283 × 103 (mm) / 시공고 95mm","page":"","note":"Trimless A Type 3ea. 석고(Plaster). 화이트. 트림리스 램프 전용 프레임.","im":219,"single":true,"options":[{"label":"기본","color":"","temp":"","im":219}]}]},{"name":"B 타입 프레임","products":[{"name":"트림리스 B타입 1구 프레임 화이트","spec":"80 × 80 × 53 (mm) / 타공 83 × 83 (mm) / 시공고 95mm","page":"","note":"Trimless B Type 1ea. 석고(Plaster). 화이트. 트림리스 램프 전용 프레임.","im":220,"single":true,"options":[{"label":"기본","color":"","temp":"","im":220}]},{"name":"트림리스 B타입 2구 프레임 화이트","spec":"147 × 80 × 53 (mm) / 타공 150 × 83 (mm) / 시공고 95mm","page":"","note":"Trimless B Type 2ea. 석고(Plaster). 화이트. 트림리스 램프 전용 프레임.","im":221,"single":true,"options":[{"label":"기본","color":"","temp":"","im":221}]},{"name":"트림리스 B타입 3구 프레임 화이트","spec":"217 × 80 × 53 (mm) / 타공 217 × 83 (mm) / 시공고 95mm","page":"","note":"Trimless B Type 3ea. 석고(Plaster). 화이트. 트림리스 램프 전용 프레임.","im":222,"single":true,"options":[{"label":"기본","color":"","temp":"","im":222}]}]}]},{"cat":"플로어콘센트","groups":[{"name":"빌트인 콘센트 (플로어 콘센트 시스템 박스)","products":[{"name":"플로어 콘센트 시스템 박스","spec":"전체 200 x 130 x 90 (mm) / 상판 200 x 130 x 25 / 하단 200 x 130 x 65 (mm)","page":136,"note":"소재 스테인리스 스틸. 구성품: 플로어콘센트 2구 + 2구 콘센트 2개. VAT 별도","im":114,"single":false,"options":[{"label":"실버","color":"실버","temp":"","im":114}]}]},{"name":"플로어 콘센트 모듈","products":[{"name":"220V 모듈","spec":"","page":136,"note":"콘센트 2구 모듈","im":215,"single":true,"options":[{"label":"기본","color":"","temp":"","im":215}]},{"name":"UTP+HDMI 모듈","spec":"","page":136,"note":"UTP(RJ45)+HDMI 모듈","im":216,"single":true,"options":[{"label":"기본","color":"","temp":"","im":216}]}]}]},{"cat":"실리콘 커버","groups":[{"name":"실리콘 커버 [화이트]","products":[{"name":"실리콘커버 10x10mm 화이트","spec":"외경 15x10x10mm / 타공 10x10mm","page":88,"note":"라인바 적용 1줄","im":117,"single":true,"options":[{"label":"기본","color":"","temp":"","im":117}]},{"name":"실리콘커버 15x10mm 화이트","spec":"외경 20x15x10mm / 타공 15x10mm","page":88,"note":"라인바 적용 1줄","im":118,"single":true,"options":[{"label":"기본","color":"","temp":"","im":118}]},{"name":"실리콘커버 20x10mm 화이트","spec":"외경 25x20x10mm / 타공 20x10mm","page":88,"note":"라인바 적용 1줄","im":119,"single":true,"options":[{"label":"기본","color":"","temp":"","im":119}]},{"name":"실리콘커버 25x10mm 화이트","spec":"외경 30x25x10mm / 타공 25x10mm","page":88,"note":"라인바 적용 1줄","im":120,"single":true,"options":[{"label":"기본","color":"","temp":"","im":120}]},{"name":"실리콘커버 30x20mm 화이트","spec":"외경 35x20x10mm / 타공 30x20mm","page":88,"note":"라인바 적용 1줄","im":121,"single":true,"options":[{"label":"기본","color":"","temp":"","im":121}]},{"name":"실리콘커버 40x20mm 화이트","spec":"외경 45x20x20mm / 타공 40x20mm","page":88,"note":"라인바 적용 1줄","im":122,"single":true,"options":[{"label":"기본","color":"","temp":"","im":122}]},{"name":"실리콘커버 50x20mm 화이트","spec":"외경 55x20x20mm / 타공 50x20mm","page":88,"note":"라인바 적용 1줄","im":123,"single":true,"options":[{"label":"기본","color":"","temp":"","im":123}]}]},{"name":"실리콘 커버 [블랙]","products":[{"name":"실리콘커버 10x10mm 블랙","spec":"외경 15x10x10mm / 타공 10x10mm","page":89,"note":"라인바 적용 1줄","im":125,"single":true,"options":[{"label":"기본","color":"","temp":"","im":125}]},{"name":"실리콘커버 15x10mm 블랙","spec":"외경 20x15x10mm / 타공 15x10mm","page":89,"note":"라인바 적용 1줄","im":126,"single":true,"options":[{"label":"기본","color":"","temp":"","im":126}]},{"name":"실리콘커버 20x10mm 블랙","spec":"외경 25x20x10mm / 타공 20x10mm","page":89,"note":"라인바 적용 1줄","im":127,"single":true,"options":[{"label":"기본","color":"","temp":"","im":127}]}]}]},{"cat":"배선 부속","groups":[{"name":"와고커넥터","products":[{"name":"와고커넥터","spec":"2극 (1 in / 1 out) · 레버형","page":"","note":"투명 하우징 레버형 배선 커넥터. 무탈피 원터치 결선.","im":235,"single":true,"options":[{"label":"기본","color":"","temp":"","im":235}]}]}]},{"cat":"가구 프로파일","groups":[{"name":"1409 가구 프로파일","products":[{"name":"가구프로파일 1409 날개형 2.4m","spec":"2.4m 기준 · 외경 W18xH9mm / 타공 14x8mm","page":91,"note":"호환: 프리컷팅 라인바 8mm, CCT 라인바 13mm","im":128,"single":false,"options":[{"label":"화이트","color":"화이트","temp":"","im":128},{"label":"그레이","color":"그레이","temp":"","im":129},{"label":"블랙","color":"블랙","temp":"","im":130},{"label":"크롬","color":"크롬","temp":"","im":131}]},{"name":"가구프로파일 1409 슬림형 2.4m","spec":"2.4m 기준 · 외경 W14xH9mm / 타공 14x8mm","page":91,"note":"슬림형. 호환: 프리컷팅 라인바 8mm, CCT 라인바 13mm","im":132,"single":false,"options":[{"label":"크롬","color":"크롬","temp":"","im":132}]}]},{"name":"8x8 가구 프로파일","products":[{"name":"가구프로파일 8x8 프로파일 날개형 2.4m","spec":"2.4m 기준 · 외경 W13.5xH9mm / 타공 8x8mm","page":92,"note":"호환: 프리컷팅 라인바 5mm","im":135,"single":false,"options":[{"label":"블랙","color":"블랙","temp":"","im":135},{"label":"크롬","color":"크롬","temp":"","im":136}]}]},{"name":"4x8 실리콘 가구 프로파일","products":[{"name":"가구프로파일 4x8 실리콘 하우징 2.4m","spec":"2.4m 기준 · 외경 W6.7xH9mm / 타공 5.5x8.5mm","page":93,"note":"호환: 4x8 실리콘 라인바","im":139,"single":false,"options":[{"label":"블랙","color":"블랙","temp":"","im":139},{"label":"실버","color":"실버","temp":"","im":140}]},{"name":"가구프로파일 4x8 가구 선반 프로파일 2.4m","spec":"2.4m 기준 · 외경 W8.2xH17.8mm / 타공 5.5x16.5mm","page":93,"note":"호환: 4x8 실리콘 라인바 (위아래 2줄)","im":141,"single":true,"options":[{"label":"기본","color":"","temp":"","im":141}]},{"name":"가구프로파일 4x8 45° 앵글 하우징 2.4m","spec":"2.4m 기준 · 외경 W16.5xH9.6mm / 타공 13x8.5mm","page":93,"note":"호환: 4x8 실리콘 라인바","im":142,"single":true,"options":[{"label":"기본","color":"","temp":"","im":142}]}]}]},{"cat":"COB 라인바","groups":[{"name":"프리컷팅 8mm 라인바","products":[{"name":"프리컷팅 8mm 라인바 12W","spec":"10M / 8mm","page":95,"note":"24V, LED칩 400D, 실리콘 커버 별도. 단가는 색온도 공통(10M당)","im":144,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":144},{"label":"3500K","color":"","temp":"3500K","im":144},{"label":"4000K","color":"","temp":"4000K","im":144},{"label":"6000K","color":"","temp":"6000K","im":144}]}]},{"name":"프리컷팅 8mm 라인바 V.2 (하이루멘)","products":[{"name":"프리컷팅 8mm 라인바 V.2 (하이루멘) 13W","spec":"5M / 8mm","page":95,"note":"24V, LED칩 528D, 하이루멘, 실리콘 커버 별도. 단가는 색온도 공통(5M당)","im":145,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":145},{"label":"4000K","color":"","temp":"4000K","im":145}]}]},{"name":"8mm 라인바 부속","products":[{"name":"8mm 라인바 부속 전원 입력","spec":"115×10×5mm","page":95,"note":"8mm 프리컷 라인바용. 사용자가 말한 '전원입력'(입력 리드선) 부속에 해당. 카탈로그에 별도 '50cm' 길이 표기는 없음","im":146,"single":true,"options":[{"label":"기본","color":"","temp":"","im":146}]},{"name":"8mm 라인바 부속 연결 커넥터 ㄱ자","spec":"20×16×5mm","page":95,"note":"8mm 프리컷 라인바용","im":202,"single":true,"options":[{"label":"기본","color":"","temp":"","im":202}]},{"name":"8mm 라인바 부속 연결 커넥터 일자","spec":"10×17×5mm","page":95,"note":"8mm 프리컷 라인바용","im":203,"single":true,"options":[{"label":"기본","color":"","temp":"","im":203}]}]},{"name":"5mm 초슬림 라인바","products":[{"name":"5mm 초슬림 라인바 8W","spec":"5M / 5mm","page":95,"note":"24V, LED칩 320D, 실리콘 커버 별도. 단가는 색온도 공통(5M당)","im":147,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":147},{"label":"4000K","color":"","temp":"4000K","im":147},{"label":"6000K","color":"","temp":"6000K","im":147}]}]},{"name":"5mm 라인바 부속","products":[{"name":"5mm 라인바 부속 전원 입력","spec":"115×10×5mm","page":95,"note":"5mm 프리컷 라인바용 (8mm와 동일 부속)","im":148,"single":true,"options":[{"label":"기본","color":"","temp":"","im":148}]},{"name":"5mm 라인바 부속 연결 커넥터 ㄱ자","spec":"20×16×5mm","page":95,"note":"5mm 프리컷 라인바용","im":202,"single":true,"options":[{"label":"기본","color":"","temp":"","im":202}]},{"name":"5mm 라인바 부속 연결 커넥터 일자","spec":"10×17×5mm","page":95,"note":"5mm 프리컷 라인바용","im":203,"single":true,"options":[{"label":"기본","color":"","temp":"","im":203}]}]},{"name":"프리컷팅 실리콘 라인바 (4mm)","products":[{"name":"프리컷팅 실리콘 라인바 (4mm) 9.6W","spec":"3M / 4mm","page":96,"note":"12V, LED칩 120D, 실리콘 일체형. 단가는 색온도 공통(3M당)","im":149,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":149},{"label":"4000K","color":"","temp":"4000K","im":149},{"label":"6000K","color":"","temp":"6000K","im":149}]}]},{"name":"프리컷팅 실리콘 라인바 (4mm) 부속","products":[{"name":"프리컷팅 실리콘 라인바 (4mm) 부속 전원 입력","spec":"18×6.75×4.5mm","page":96,"note":"4mm 실리콘 라인바용","im":150,"single":true,"options":[{"label":"기본","color":"","temp":"","im":150}]}]},{"name":"프리컷팅 실리콘 일체형 라인바 10x10 (V.2)","products":[{"name":"프리컷팅 실리콘 일체형 라인바 10x10 (V.2) 10W","spec":"10M 단위 출고 / 규격 13×10mm / 타공 10×10mm","page":96,"note":"24V. 색온도 3색 동일 단가(사이즈로 단가 구분). 10M 단위 출고","im":151,"single":false,"options":[{"label":"전구색·주백색·주광색","color":"","temp":"전구색·주백색·주광색","im":151}]}]},{"name":"프리컷팅 실리콘 일체형 라인바 10x20 (V.2)","products":[{"name":"프리컷팅 실리콘 일체형 라인바 10x20 (V.2) 10W","spec":"10M 단위 출고 / 규격 25×10mm / 타공 20×10mm","page":96,"note":"24V. 색온도 3색 동일 단가(사이즈로 단가 구분). 10M 단위 출고","im":151,"single":false,"options":[{"label":"전구색·주백색·주광색","color":"","temp":"전구색·주백색·주광색","im":151}]}]},{"name":"실리콘 일체형 라인바 10x10/10x20 부속","products":[{"name":"실리콘 일체형 라인바 10x10/10x20 부속 전원잭","spec":"1M","page":96,"note":"부속 3종(전원잭/브라켓/마감캡) 단가 1,000won 표기(부속 공통 추정)","im":152,"single":true,"options":[{"label":"기본","color":"","temp":"","im":152}]},{"name":"실리콘 일체형 라인바 10x10/10x20 부속 브라켓","spec":"L13×W18×H10mm","page":96,"note":"부속 단가 1,000won 표기(전원잭/브라켓/마감캡 공통 추정)","im":208,"single":true,"options":[{"label":"기본","color":"","temp":"","im":208}]},{"name":"실리콘 일체형 라인바 10x10/10x20 부속 마감캡","spec":"L10×W10×H10mm","page":96,"note":"부속 단가 1,000won 표기(전원잭/브라켓/마감캡 공통 추정)","im":207,"single":true,"options":[{"label":"기본","color":"","temp":"","im":207}]}]},{"name":"CCT 라인바 (24V)","products":[{"name":"CCT 라인바 (24V) 14W","spec":"10M / 12mm","page":97,"note":"24V. p97 기준 77,000won. 구버전 p82에는 60,000won으로 표기(가격 상이)","im":153,"single":false,"options":[{"label":"3000K ↔ 6500K","color":"","temp":"3000K ↔ 6500K","im":153}]}]},{"name":"CCT 라인바 부속","products":[{"name":"CCT 라인바 부속 전원 입력","spec":"117×17×10mm","page":97,"note":"CCT 라인바용","im":154,"single":true,"options":[{"label":"기본","color":"","temp":"","im":154}]},{"name":"CCT 라인바 부속 연결 커넥터 ㄱ자","spec":"20×17×5mm","page":97,"note":"CCT 라인바용","im":202,"single":true,"options":[{"label":"기본","color":"","temp":"","im":202}]},{"name":"CCT 라인바 부속 연결 커넥터 일자","spec":"10×17×5mm","page":97,"note":"CCT 라인바용","im":203,"single":true,"options":[{"label":"기본","color":"","temp":"","im":203}]}]},{"name":"RGBCW 라인바 (24V)","products":[{"name":"라인바 (24V) 18W","spec":"10M / 12mm","page":97,"note":"24V, LED칩 840D. p97 기준 100,000won. 구버전 p82에는 120,000won으로 표기(가격 상이)","im":155,"single":false,"options":[{"label":"RGBCW RGBCW","color":"RGBCW","temp":"RGBCW","im":155}]}]},{"name":"RGBCW 라인바 부속","products":[{"name":"RGBCW 라인바 부속 전원 입력","spec":"115×10×5mm","page":97,"note":"RGBCW 라인바용","im":156,"single":true,"options":[{"label":"기본","color":"","temp":"","im":156}]},{"name":"RGBCW 라인바 부속 연결 커넥터 일자","spec":"10×17×5mm","page":97,"note":"RGBCW 라인바용","im":203,"single":true,"options":[{"label":"기본","color":"","temp":"","im":203}]}]},{"name":"세타플럭스 CCT (2000lm)","products":[{"name":"세타플럭스 CCT (2000lm) 20.4W","spec":"5M / 절단구간 50mm","page":97,"note":"DC 24V, 최대밝기 2000lm/m, CRI 90. 암페어가 높아 입력 부속 없이 납땜 필요","im":157,"single":false,"options":[{"label":"2700K-6500K","color":"","temp":"2700K-6500K","im":157}]}]},{"name":"세타플럭스 CCT 부속","products":[{"name":"세타플럭스 CCT 부속 전원 입력","spec":"167×14×5.5mm","page":97,"note":"세타플럭스용","im":209,"single":true,"options":[{"label":"기본","color":"","temp":"","im":209}]},{"name":"세타플럭스 CCT 부속 연결 커넥터 일자","spec":"14×14×5.8mm","page":97,"note":"세타플럭스용","im":203,"single":true,"options":[{"label":"기본","color":"","temp":"","im":203}]}]}]}]},"beomwang":{"label":"범왕","sections":[{"cat":"다운라이트-고연색성","groups":[{"name":"프레임리스 다운라이트 [CRI+90]","products":[{"name":"다운라이트 고연색성 FL-35 1.5인치 7W","spec":"FL-35","page":46,"note":"타공35mm/7W","im":158,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":158},{"label":"3500K","color":"","temp":"3500K","im":158},{"label":"4000K","color":"","temp":"4000K","im":158}]},{"name":"다운라이트 고연색성 FL-55 2인치 10W","spec":"FL-55","page":46,"note":"타공53mm/10W","im":159,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":159},{"label":"3500K","color":"","temp":"3500K","im":159},{"label":"4000K","color":"","temp":"4000K","im":159}]}]},{"name":"월워셔 [CRI+90]","products":[{"name":"다운라이트 고연색성 월워셔 2인치 8W","spec":"","page":47,"note":"타공55mm/8W","im":160,"single":false,"options":[{"label":"크롬 3000K","color":"크롬","temp":"3000K","im":160},{"label":"크롬 3500K","color":"크롬","temp":"3500K","im":160},{"label":"크롬 4000K","color":"크롬","temp":"4000K","im":160},{"label":"건블랙 3000K","color":"건블랙","temp":"3000K","im":160},{"label":"건블랙 3500K","color":"건블랙","temp":"3500K","im":160},{"label":"건블랙 4000K","color":"건블랙","temp":"4000K","im":160}]},{"name":"다운라이트 고연색성 월워셔 3인치 12W","spec":"","page":47,"note":"타공57mm/12W","im":161,"single":false,"options":[{"label":"크롬 3000K","color":"크롬","temp":"3000K","im":161},{"label":"크롬 3500K","color":"크롬","temp":"3500K","im":161},{"label":"크롬 4000K","color":"크롬","temp":"4000K","im":161},{"label":"건블랙 3000K","color":"건블랙","temp":"3000K","im":161},{"label":"건블랙 3500K","color":"건블랙","temp":"3500K","im":161},{"label":"건블랙 4000K","color":"건블랙","temp":"4000K","im":161}]}]},{"name":"뷰티파이 [CRI+90]","products":[{"name":"다운라이트 고연색성 뷰티파이 3인치 13W","spec":"","page":47,"note":"타공75mm/13W, 커버옵션 없음(단일)","im":162,"single":false,"options":[{"label":"기본 3000K","color":"기본","temp":"3000K","im":162},{"label":"기본 3500K","color":"기본","temp":"3500K","im":162},{"label":"기본 4000K","color":"기본","temp":"4000K","im":162}]}]},{"name":"틸팅 다운라이트 [CRI+90]","products":[{"name":"다운라이트 고연색성 틸팅 2인치 8W","spec":"","page":48,"note":"타공55mm/8W","im":163,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":163},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":163},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":163},{"label":"블랙 3000K","color":"블랙","temp":"3000K","im":164},{"label":"블랙 3500K","color":"블랙","temp":"3500K","im":164},{"label":"블랙 4000K","color":"블랙","temp":"4000K","im":164}]}]},{"name":"1.5인치 다운라이트 [CRI+90]","products":[{"name":"다운라이트 고연색성 K1.5-35 A타입 1.5인치 7W","spec":"K1.5-35","page":49,"note":"A타입 Anti-Glare/타공35mm/7W","im":165,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":165},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":165},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":165}]},{"name":"다운라이트 고연색성 K1.5-35 B타입 1.5인치 7W","spec":"K1.5-35","page":49,"note":"B타입 Anti-Glare/타공35mm/7W","im":166,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":166},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":166},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":166}]},{"name":"다운라이트 고연색성 K1.5-35 니켈 1.5인치 7W","spec":"K1.5-35","page":49,"note":"Anti-Glare/타공35mm/7W","im":167,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":167},{"label":"3500K","color":"","temp":"3500K","im":167},{"label":"4000K","color":"","temp":"4000K","im":167}]}]},{"name":"2인치 다운라이트 [CRI+90]","products":[{"name":"다운라이트 고연색성 K1-55 2인치 7W","spec":"K1-55","page":50,"note":"Anti-Glare/타공55mm/7W","im":168,"single":false,"options":[{"label":"화이트+크롬 3000K","color":"화이트+크롬","temp":"3000K","im":168},{"label":"화이트+크롬 3500K","color":"화이트+크롬","temp":"3500K","im":168},{"label":"화이트+크롬 4000K","color":"화이트+크롬","temp":"4000K","im":168},{"label":"화이트+건블랙 3000K","color":"화이트+건블랙","temp":"3000K","im":169},{"label":"화이트+건블랙 3500K","color":"화이트+건블랙","temp":"3500K","im":169},{"label":"화이트+건블랙 4000K","color":"화이트+건블랙","temp":"4000K","im":169},{"label":"블랙+크롬 3000K","color":"블랙+크롬","temp":"3000K","im":170},{"label":"블랙+크롬 3500K","color":"블랙+크롬","temp":"3500K","im":170},{"label":"블랙+크롬 4000K","color":"블랙+크롬","temp":"4000K","im":170}]},{"name":"다운라이트 고연색성 K6-55 2인치 8W","spec":"K6-55","page":51,"note":"Anti-Glare/타공55mm/8W (색상 이미지기준 화이트)","im":171,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":171},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":171},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":171}]},{"name":"다운라이트 고연색성 K9-55 2인치 8W","spec":"K9-55","page":51,"note":"Anti-Glare/타공55mm/8W","im":172,"single":false,"options":[{"label":"니켈 3000K","color":"니켈","temp":"3000K","im":172},{"label":"니켈 3500K","color":"니켈","temp":"3500K","im":172},{"label":"니켈 4000K","color":"니켈","temp":"4000K","im":172},{"label":"크롬 3000K","color":"크롬","temp":"3000K","im":173},{"label":"크롬 3500K","color":"크롬","temp":"3500K","im":173},{"label":"크롬 4000K","color":"크롬","temp":"4000K","im":173}]}]},{"name":"3인치 다운라이트 [CRI+90]","products":[{"name":"다운라이트 고연색성 K1-75 3인치 25W","spec":"K1-75","page":52,"note":"Anti-Glare/타공75mm/25W (색상 이미지기준)","im":174,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":174},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":174},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":174}]},{"name":"다운라이트 고연색성 K5-75 3인치 10W","spec":"K5-75","page":52,"note":"Anti-Glare/타공72mm/10W/빔각36° (색상 이미지기준)","im":175,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":175},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":175},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":175}]}]}]},{"cat":"다운라이트-집중형","groups":[{"name":"2인치 다운라이트 [COB 집중형]","products":[{"name":"다운라이트 집중형 K2-55 A타입 2인치 8W","spec":"K2-55","page":55,"note":"A타입 Anti-Glare/타공55mm/8W","im":176,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":176},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":176},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":176}]},{"name":"다운라이트 집중형 K2-55 B타입 2인치 8W","spec":"K2-55","page":55,"note":"B타입 Anti-Glare/타공55mm/8W","im":177,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":177},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":177},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":177}]},{"name":"다운라이트 집중형 K7-55 2인치 8W","spec":"K7-55","page":55,"note":"Anti-Glare/타공55mm/8W","im":178,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":178},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":178},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":178}]},{"name":"다운라이트 집중형 K7-55 2인치 7W","spec":"K7-55","page":55,"note":"Anti-Glare/타공55mm/7W","im":179,"single":false,"options":[{"label":"블랙 3000K","color":"블랙","temp":"3000K","im":179},{"label":"블랙 3500K","color":"블랙","temp":"3500K","im":179},{"label":"블랙 4000K","color":"블랙","temp":"4000K","im":179}]},{"name":"다운라이트 집중형 K8-55 2인치 8W","spec":"K8-55","page":55,"note":"CRI+90 K8-55 Anti-Glare/타공55mm/8W","im":180,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":180},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":180},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":180}]}]}]},{"cat":"다운라이트-확산형","groups":[{"name":"2인치 다운라이트 [확산형]","products":[{"name":"다운라이트 확산형 K2-55 A타입 2인치 8W","spec":"K2-55","page":62,"note":"구동:일반, A타입, Ø63xH40, 타공55mm, 8W","im":181,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":181},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":181},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":181}]},{"name":"다운라이트 확산형 K2-55 B타입 2인치 8W","spec":"K2-55","page":62,"note":"구동:일반, B타입, Ø63xH40, 타공55mm, 8W","im":182,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":182},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":182},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":182}]},{"name":"다운라이트 확산형 UMP-55 2인치 8W","spec":"UMP-55","page":62,"note":"구동:일반, 방습, Ø60xH43, 타공55mm, 8W, 색상 미표기","im":183,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":183},{"label":"3500K","color":"","temp":"3500K","im":183},{"label":"4000K","color":"","temp":"4000K","im":183}]}]},{"name":"3인치 다운라이트 [확산형]","products":[{"name":"다운라이트 확산형 하이루멘 UMP-S 3인치 12W","spec":"UMP-S","page":64,"note":"구동:일반, 하이루멘, Ø85xH48, 타공72mm, 12W, 색상 미표기","im":184,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":184},{"label":"4000K","color":"","temp":"4000K","im":184}]}]}]},{"cat":"다운라이트-24V CCT","groups":[{"name":"1.5인치 다운라이트 [24V CCT]","products":[{"name":"다운라이트 24V CCT K1.5-35 A타입 1.5인치 5W","spec":"K1.5-35","page":78,"note":"구동:24V CCT, A타입, Anti-Glare, Ø40xH53, 타공35mm, 5W, 빔각24°, CCT가변, 색상 미표기","im":185,"single":false,"options":[{"label":"3000K~6500K","color":"","temp":"3000K~6500K","im":185}]},{"name":"다운라이트 24V CCT K1.5-35 B타입 1.5인치 5W","spec":"K1.5-35","page":78,"note":"구동:24V CCT, B타입, Anti-Glare, Ø40xH53, 타공35mm, 5W, 빔각24°, CCT가변, 색상 미표기","im":186,"single":false,"options":[{"label":"3000K~6500K","color":"","temp":"3000K~6500K","im":186}]}]},{"name":"2인치 다운라이트 [24V CCT]","products":[{"name":"다운라이트 24V CCT K1-55 2인치 7W","spec":"K1-55","page":79,"note":"구동:24V CCT, CRI+90, Anti-Glare, Ø62xH75, 타공55mm, 7W, CCT가변","im":187,"single":false,"options":[{"label":"크롬 3000K~6500K","color":"크롬","temp":"3000K~6500K","im":187}]},{"name":"다운라이트 24V CCT K2-55 2인치 8W","spec":"K2-55","page":79,"note":"구동:24V CCT, CRI+97, Anti-Glare, Ø65xH58, 타공50mm, 8W, 빔각24°, CCT가변, ※P62 K2-55(일반구동)와 동일코드/구동상이","im":188,"single":false,"options":[{"label":"크롬 3000K~6500K","color":"크롬","temp":"3000K~6500K","im":188},{"label":"화이트 3000K~6500K","color":"화이트","temp":"3000K~6500K","im":189}]},{"name":"다운라이트 24V CCT K3-55 2인치 8W","spec":"K3-55","page":79,"note":"구동:24V CCT, CRI+90, Anti-Glare, Ø62xH60, 타공55mm, 8W, 빔각24°, CCT가변, 제품색상 화이트/블랙","im":190,"single":false,"options":[{"label":"화이트 3000K~6500K","color":"화이트","temp":"3000K~6500K","im":190},{"label":"블랙 3000K~6500K","color":"블랙","temp":"3000K~6500K","im":191}]},{"name":"다운라이트 24V CCT K6-55 2인치 8W","spec":"K6-55","page":79,"note":"구동:24V CCT(페이지 기준), CRI+90, Anti-Glare, Ø61xH67, 타공55mm, 8W, 빔각24°, OSRAM CHIP, 색온도 고정 선택형(3000/3500/4000)","im":192,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":192},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":192},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":192}]},{"name":"다운라이트 24V CCT K8-55 2인치 8W","spec":"K8-55","page":79,"note":"구동:24V CCT, Anti-Glare, Ø63xH42, 타공55mm, 8W, CCT가변, 색상 미표기","im":193,"single":false,"options":[{"label":"3000K~6500K","color":"","temp":"3000K~6500K","im":193}]},{"name":"다운라이트 24V CCT K9-55 2인치 8W","spec":"K9-55","page":79,"note":"구동:24V CCT(페이지 기준), CRI+90, Anti-Glare, Ø61xH60, 타공55mm, 8W, OSRAM CHIP, 색온도 고정 선택형(3000/3500/4000)","im":194,"single":false,"options":[{"label":"니켈 3000K","color":"니켈","temp":"3000K","im":194},{"label":"니켈 3500K","color":"니켈","temp":"3500K","im":194},{"label":"니켈 4000K","color":"니켈","temp":"4000K","im":194}]}]},{"name":"3인치 다운라이트 [24V CCT]","products":[{"name":"다운라이트 24V CCT K3-75 3인치 10W","spec":"K3-75","page":81,"note":"구동:24V CCT, CRI+97, Anti-Glare, Ø85xH76, 타공75mm, 10W, 빔각24°, CCT가변, 색상 미표기","im":195,"single":false,"options":[{"label":"3000K~6500K","color":"","temp":"3000K~6500K","im":195}]}]}]},{"cat":"다운라이트-페이드인아웃","groups":[{"name":"2인치 집중형 다운라이트 [페이드인아웃]","products":[{"name":"다운라이트 페이드인아웃 K1-55 2인치 7W","spec":"K1-55","page":84,"note":"구동:페이드인아웃, CRI+90, Anti-Glare, Ø62xH75, 타공55mm, 7W, OSRAM CHIP, ※P79 K1-55(24V CCT)와 동일코드/구동상이","im":196,"single":false,"options":[{"label":"크롬 3000K","color":"크롬","temp":"3000K","im":196},{"label":"크롬 3500K","color":"크롬","temp":"3500K","im":196},{"label":"크롬 4000K","color":"크롬","temp":"4000K","im":196}]},{"name":"다운라이트 페이드인아웃 K6-55 2인치 8W","spec":"K6-55","page":84,"note":"구동:페이드인아웃, CRI+90, Anti-Glare, Ø61xH67, 타공55mm, 8W, OSRAM CHIP, 색상 미표기, ※P79 K6-55(24V CCT)와 동일코드/구동상이","im":197,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":197},{"label":"3500K","color":"","temp":"3500K","im":197},{"label":"4000K","color":"","temp":"4000K","im":197}]},{"name":"다운라이트 페이드인아웃 K7-55 2인치 8W","spec":"K7-55","page":84,"note":"구동:페이드인아웃, Anti-Glare, Ø62xH60, 타공55mm, 8W, OSRAM CHIP, 색상 미표기","im":198,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":198},{"label":"3500K","color":"","temp":"3500K","im":198},{"label":"4000K","color":"","temp":"4000K","im":198}]},{"name":"다운라이트 페이드인아웃 K9-55 2인치 8W","spec":"K9-55","page":84,"note":"구동:페이드인아웃, CRI+90, Anti-Glare, Ø61xH60, 타공55mm, 8W, OSRAM CHIP, ※P79 K9-55(24V CCT)와 동일코드/구동상이","im":199,"single":false,"options":[{"label":"니켈 3000K","color":"니켈","temp":"3000K","im":199},{"label":"니켈 3500K","color":"니켈","temp":"3500K","im":199},{"label":"니켈 4000K","color":"니켈","temp":"4000K","im":199},{"label":"크롬 3000K","color":"크롬","temp":"3000K","im":200},{"label":"크롬 3500K","color":"크롬","temp":"3500K","im":200},{"label":"크롬 4000K","color":"크롬","temp":"4000K","im":200}]}]},{"name":"3인치 집중형 다운라이트 [페이드인아웃]","products":[{"name":"다운라이트 페이드인아웃 K5-75 3인치 10W","spec":"K5-75","page":86,"note":"구동:페이드인아웃, CRI+90, Anti-Glare, Ø79.5xH62, 타공72mm, 10W, 빔각36°, OSRAM CHIP, 색상 미표기","im":201,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":201},{"label":"4000K","color":"","temp":"4000K","im":201}]}]}]},{"cat":"트림리스 램프","groups":[{"name":"트림리스 램프","products":[{"name":"트림리스 램프 8W","spec":"Ø50 x H55 (mm) / 타공 Ø47 / 빔각 24°","page":"","note":"Trimless Ramp. CRI+90, 65lm/W, Osram Chip, 220AC 60Hz. 석고(Plaster) 프레임 전용. 옵션: 디밍(Triac).","im":232,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":232},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":232},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":232},{"label":"블랙 3000K","color":"블랙","temp":"3000K","im":232},{"label":"블랙 3500K","color":"블랙","temp":"3500K","im":232},{"label":"블랙 4000K","color":"블랙","temp":"4000K","im":232}]},{"name":"트림리스 램프 페이드인아웃 8W","spec":"Ø50 x H55 (mm) / 타공 Ø47 / 빔각 24°","page":"","note":"Trimless Fade in/out. CRI+90, 65lm/W, Osram Chip, 220AC 60Hz. 석고(Plaster) 프레임 전용.","im":233,"single":false,"options":[{"label":"화이트 3000K","color":"화이트","temp":"3000K","im":233},{"label":"화이트 3500K","color":"화이트","temp":"3500K","im":233},{"label":"화이트 4000K","color":"화이트","temp":"4000K","im":233},{"label":"블랙 3000K","color":"블랙","temp":"3000K","im":233},{"label":"블랙 3500K","color":"블랙","temp":"3500K","im":233},{"label":"블랙 4000K","color":"블랙","temp":"4000K","im":233}]},{"name":"트림리스 램프 CCT 8W","spec":"Ø50 x H55 (mm) / 타공 Ø47 / 빔각 24°","page":"","note":"Trimless CCT. 2700K↔6500K 색온도 가변. CRI+90, 65lm/W, Osram Chip, 220AC 60Hz. 석고(Plaster) 프레임 전용.","im":234,"single":false,"options":[{"label":"화이트","color":"화이트","temp":"","im":234},{"label":"블랙","color":"블랙","temp":"","im":234}]}]}]},{"cat":"안정기","groups":[{"name":"안정기","products":[{"name":"페이드인아웃 안정기","spec":"","page":"","note":"페이드인아웃 다운라이트 전용 안정기","im":205,"single":true,"options":[{"label":"기본","color":"","temp":"","im":205}]},{"name":"디밍 안정기","spec":"","page":"","note":"디밍 다운라이트 전용 안정기","im":206,"single":true,"options":[{"label":"기본","color":"","temp":"","im":206}]}]}]},{"cat":"다운라이트 커버","groups":[{"name":"K 시리즈 커버","products":[{"name":"다운라이트 커버 K1.5","spec":"K1.5","page":"","note":"다운라이트 교체용 커버. A타입/B타입 구분. 사진은 각 타입 등기구 기준","im":165,"single":false,"options":[{"label":"블랙 A타입","color":"블랙","temp":"A타입","im":165},{"label":"블랙 B타입","color":"블랙","temp":"B타입","im":166},{"label":"니켈 A타입","color":"니켈","temp":"A타입","im":165},{"label":"니켈 B타입","color":"니켈","temp":"B타입","im":166},{"label":"건블랙 A타입","color":"건블랙","temp":"A타입","im":165},{"label":"건블랙 B타입","color":"건블랙","temp":"B타입","im":166},{"label":"아이보리 A타입","color":"아이보리","temp":"A타입","im":165},{"label":"아이보리 B타입","color":"아이보리","temp":"B타입","im":166}],"swap":true},{"name":"다운라이트 커버 K2","spec":"K2","page":"","note":"다운라이트 교체용 커버. A타입/B타입 구분. 사진은 각 타입 등기구 기준","im":176,"single":false,"options":[{"label":"블랙 A타입","color":"블랙","temp":"A타입","im":176},{"label":"블랙 B타입","color":"블랙","temp":"B타입","im":177},{"label":"니켈 A타입","color":"니켈","temp":"A타입","im":176},{"label":"니켈 B타입","color":"니켈","temp":"B타입","im":177},{"label":"건블랙 A타입","color":"건블랙","temp":"A타입","im":176},{"label":"건블랙 B타입","color":"건블랙","temp":"B타입","im":177},{"label":"아이보리 A타입","color":"아이보리","temp":"A타입","im":176},{"label":"아이보리 B타입","color":"아이보리","temp":"B타입","im":177}],"swap":true},{"name":"다운라이트 커버 K6","spec":"K6","page":"","note":"다운라이트 교체용 커버","im":171,"single":false,"options":[{"label":"블랙","color":"블랙","temp":"","im":171},{"label":"니켈","color":"니켈","temp":"","im":171},{"label":"건블랙","color":"건블랙","temp":"","im":171},{"label":"아이보리","color":"아이보리","temp":"","im":171}]},{"name":"다운라이트 커버 K9","spec":"K9","page":"","note":"다운라이트 교체용 커버","im":172,"single":false,"options":[{"label":"화이트","color":"화이트","temp":"","im":172},{"label":"블랙","color":"블랙","temp":"","im":172}]}]},{"name":"FL 시리즈 커버","products":[{"name":"다운라이트 커버 FL-35","spec":"FL-35","page":"","note":"다운라이트 교체용 커버","im":158,"single":false,"options":[{"label":"블랙","color":"블랙","temp":"","im":158},{"label":"건블랙","color":"건블랙","temp":"","im":158},{"label":"건크롬","color":"건크롬","temp":"","im":158}]},{"name":"다운라이트 커버 FL-55","spec":"FL-55","page":"","note":"다운라이트 교체용 커버","im":159,"single":false,"options":[{"label":"블랙","color":"블랙","temp":"","im":159},{"label":"건블랙","color":"건블랙","temp":"","im":159},{"label":"건크롬","color":"건크롬","temp":"","im":159}]}]}]},{"cat":"가구 부속","groups":[{"name":"가구 SMPS","products":[{"name":"가구 SMPS","spec":"160 × 61 × 20 (mm) / 전원선 155mm","page":"","note":"Furniture SMPS. 가구용 디밍 드라이버. 페어링·밝기조절·페이드인아웃 지원. 화이트.","im":223,"single":false,"options":[{"label":"12V 100W","color":"","temp":"","im":223},{"label":"24V 100W","color":"","temp":"","im":223}]}]},{"name":"디밍 스위치","products":[{"name":"서랍 센서 스위치","spec":"15 × 15 (mm) / 타공 Ø12","page":"","note":"가구 서랍 감지 센서 스위치.","im":224,"single":true,"options":[{"label":"기본","color":"","temp":"","im":224}]},{"name":"가구 디밍 스위치","spec":"15 × 15 (mm) / 타공 Ø12","page":"","note":"가구 매입형 디밍 스위치.","im":225,"single":true,"options":[{"label":"기본","color":"","temp":"","im":225}]},{"name":"히든 터치 스위치","spec":"Ø45 x 7 (mm) / 선 길이 2M","page":"","note":"매입형 히든 터치 스위치.","im":226,"single":true,"options":[{"label":"기본","color":"","temp":"","im":226}]},{"name":"모션 센서 스위치","spec":"15 × 15 (mm) / 타공 Ø12","page":"","note":"모션 감지 센서 스위치.","im":227,"single":true,"options":[{"label":"기본","color":"","temp":"","im":227}]},{"name":"무선 디밍 스위치","spec":"Ø50 x 13 (mm)","page":"","note":"CR-2032 배터리. RF Bluetooth+2.4G. DC 3V.","im":228,"single":true,"options":[{"label":"기본","color":"","temp":"","im":228}]}]},{"name":"연결 부속","products":[{"name":"전원 연결선 2M","spec":"길이 2M","page":"","note":"가구 SMPS 전원 연결선.","im":229,"single":true,"options":[{"label":"기본","color":"","temp":"","im":229}]},{"name":"스위치 연장선 2M","spec":"길이 2M","page":"","note":"스위치 연장선.","im":230,"single":true,"options":[{"label":"기본","color":"","temp":"","im":230}]},{"name":"조명 분배기","spec":"58 × 38 × 10 (mm) / 선 길이 240mm","page":"","note":"6구 조명 분배기.","im":231,"single":true,"options":[{"label":"기본","color":"","temp":"","im":231}]}]}]}]},"binlighting":{"label":"빈라이팅","sections":[{"cat":"알라바스타 벽등","groups":[{"name":"루나라 알라바스타 벽등","products":[{"name":"알라바스타 A타입","spec":"W120 x H100","page":0,"note":"브라켓 Ø95mm · G9 램프별도 · 마블 · 5W","im":210,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":210},{"label":"4000K","color":"","temp":"4000K","im":210}]},{"name":"알라바스타 B타입","spec":"W70 x H60","page":0,"note":"브라켓 Ø20mm · LED 내장 · 마블 · 5W","im":211,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":211},{"label":"4000K","color":"","temp":"4000K","im":211}]},{"name":"알라바스타 C타입","spec":"W120 x H100","page":0,"note":"브라켓 Ø20mm · LED 내장 · 마블 · 5W","im":212,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":212},{"label":"4000K","color":"","temp":"4000K","im":212}]},{"name":"알라바스타 D타입","spec":"W120 x H110","page":0,"note":"브라켓 Ø50mm · G9 램프별도 · 마블 · 5W","im":213,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":213},{"label":"4000K","color":"","temp":"4000K","im":213}]},{"name":"알라바스타 E타입","spec":"W130 x H53","page":0,"note":"브라켓 Ø40mm · LED 내장 · 마블 · 5W","im":214,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":214},{"label":"4000K","color":"","temp":"4000K","im":214}]},{"name":"알라바스타 F타입","spec":"","page":0,"note":"마블 · 사진/규격 추후 반영","im":-1,"single":false,"options":[{"label":"3000K","color":"","temp":"3000K","im":-1},{"label":"4000K","color":"","temp":"4000K","im":-1}]}]}]}]}};
@@ -192,31 +230,79 @@ const SAVE_URL="https://script.google.com/macros/s/AKfycbwGD_SOIZuK0KIEKcoexXTli
 const BOOK_URL="https://kant-order-book.jjiya1225.workers.dev/api/book";
 const BOOK_TOKEN="";   /* Worker에 ORDER_TOKEN을 설정했다면 같은 값 */
 
-const state={factory:Object.keys(CATALOG)[0],catFilter:"all",color:"all",search:"",qty:{},notes:{},gcol:{},edit:null};
+const state={factory:"",catFilter:"all",color:"all",search:"",qty:{},notes:{},gcol:{},edit:null};
 const COLORS=["블랙","화이트","니켈","오렌지"];
 function isMagCat(c){return !!c&&c.indexOf("마그네틱")>=0;}
 const $=s=>document.querySelector(s);
 
-let UID=0; const OPTS={};
-Object.keys(CATALOG).forEach(fk=>CATALOG[fk].sections.forEach(sec=>sec.groups.forEach(g=>g.products.forEach(p=>{
-  p._fk=fk;p._cat=sec.cat;p._group=g.name;p._pid="p"+(++UID);
-  p.options.forEach(o=>{o._id="o"+(++UID);o._p=p;OPTS[o._id]=o;});
-}))));
+/* ── 제품 목록 = 내장 카탈로그 + 서버 오버레이 ────────────────────
+   내장 CATALOG 는 이 파일에 박혀 있다. 화면에서 추가·수정·삭제한 내용은
+   서버(KV)의 오버레이에 쌓이고, 둘을 합친 CAT 이 실제로 쓰이는 목록이다.
+   내장 제품의 신원은 '공급처|대분류|상위항목|원래이름' 으로 잡는다 —
+   이름을 바꿔도 같은 제품으로 추적된다. */
+let CAT=null, OVERLAY={add:[],edit:{},del:[]}, CATVER=0;
+var NAME2OPT=null;
+const PK=(fk,cat,group,name)=>[fk,cat,group,name].join("|");
+let UID=0, OPTS={};
+function buildIndex(){
+  UID=0;OPTS={};NAME2OPT=null;
+  Object.keys(CAT).forEach(fk=>CAT[fk].sections.forEach(sec=>sec.groups.forEach(g=>g.products.forEach(p=>{
+    p._fk=fk;p._cat=sec.cat;p._group=g.name;p._pid="p"+(++UID);
+    p._key=PK(fk,sec.cat,g.name,p._base||p.name);
+    (p.options||[]).forEach(o=>{o._id="o"+(++UID);o._p=p;OPTS[o._id]=o;});
+  }))));
+}
+function applyOverlay(){
+  CAT=JSON.parse(JSON.stringify(CATALOG));
+  const ov=OVERLAY||{add:[],edit:{},del:[]};
+  const del=new Set(ov.del||[]),ed=ov.edit||{};
+  Object.keys(CAT).forEach(fk=>{
+    CAT[fk].sections.forEach(sec=>sec.groups.forEach(g=>{
+      g.products=g.products.filter(p=>{
+        const k=PK(fk,sec.cat,g.name,p.name);
+        if(del.has(k))return false;
+        if(ed[k]){p._base=p.name;Object.assign(p,ed[k]);}
+        return true;
+      });
+    }));
+    CAT[fk].sections=CAT[fk].sections.filter(sec=>{
+      sec.groups=sec.groups.filter(g=>g.products.length);return sec.groups.length;});
+  });
+  (ov.add||[]).forEach(a=>{
+    const f=CAT[a.fk];if(!f)return;
+    let sec=f.sections.find(s=>s.cat===a.cat);
+    if(!sec){sec={cat:a.cat,groups:[]};f.sections.push(sec);}
+    let g=sec.groups.find(x=>x.name===a.group);
+    if(!g){g={name:a.group,products:[]};sec.groups.push(g);}
+    const p=JSON.parse(JSON.stringify(a.product));p._added=a.id;g.products.push(p);
+  });
+  buildIndex();
+}
+/* 오버레이 캐시 — 서버 버전이 그대로면 큰 데이터를 다시 받지 않는다 */
+const CATCACHE="kant_catalog_v1";
+function loadCatCache(){try{return JSON.parse(localStorage.getItem(CATCACHE)||"null");}catch(e){return null;}}
+function saveCatCache(){try{localStorage.setItem(CATCACHE,JSON.stringify({version:CATVER,overlay:OVERLAY}));}catch(e){console.error(e);}}
+(function initCatalog(){
+  const c=loadCatCache();
+  if(c&&c.overlay){CATVER=c.version||0;OVERLAY=c.overlay;}
+  applyOverlay();
+  if(!state.factory||!CAT[state.factory])state.factory=Object.keys(CAT)[0];
+})();
 
 function placeholderSVG(t){t=(t||"").slice(0,14);const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' fill='#eef1f6'/><rect x='6' y='6' width='108' height='108' rx='10' fill='#fff' stroke='#d6dbe6'/><circle cx='60' cy='48' r='18' fill='#f4a028' opacity='.85'/></svg>`;return "data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svg)));}
 function escH(s){return String(s==null?"":s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
 function imById(im,f){return (im!=null&&im>=0)?IMAGES[im]:placeholderSVG(f);}
-function pImg(p){return imById(p.im,p.name);}
-function oImg(o){return imById(o.im>=0?o.im:o._p.im,o._p.name);}
+function pImg(p){return p.imgData||imById(p.im,p.name);}
+function oImg(o){return o.imgData||(o._p&&o._p.imgData)||imById(o.im>=0?o.im:o._p.im,o._p.name);}
 function fullName(o){return o.label==="기본"?o._p.name:(o._p.name+" "+o.label);}
 
 const CHEX={"블랙":"#1c1c1e","화이트":"#f3f4f6","니켈":"#b9bec9","오렌지":"#f4a028","크롬":"#cbd0d8","건블랙":"#2b2e34","건크롬":"#7f8590","아이보리":"#efe3cc","그레이":"#9aa0a8","실버":"#c4c8d0","골드":"#d9b36a","샌드니켈":"#c9c3b5","올블랙":"#1c1c1e","올화이트":"#f3f4f6","화이트/블랙":"#8a8f99","기본":"#e5e7eb"};
 function chex(name){if(!name)return "#e5e7eb";if(CHEX[name])return CHEX[name];const first=name.split("+")[0].trim();return CHEX[first]||"#dfe3ea";}
 function swatchHtml(name){if(name&&name.indexOf("+")>=0){const p=name.split("+");return `<span class="swatch" style="background:linear-gradient(135deg,${chex(p[0])} 50%,${chex(p[1])} 50%)"></span>`;}return `<span class="swatch" style="background:${chex(name)}"></span>`;}
 
-function renderTabs(){const t=$("#tabs");t.innerHTML="";Object.keys(CATALOG).forEach(fk=>{const b=document.createElement("div");b.className="tab"+(fk===state.factory?" active":"");b.textContent=CATALOG[fk].label;b.onclick=()=>{state.factory=fk;state.catFilter="all";state.color="all";syncSupplier();render();updateBookInfo();};t.appendChild(b);});}
-function renderChips(){const w=$("#chips");w.innerHTML="";const cats=CATALOG[state.factory].sections.map(s=>s.cat);const mk=(k,l)=>{const c=document.createElement("div");c.className="chip"+(state.catFilter===k?" on":"");c.textContent=l;c.onclick=()=>{state.catFilter=k;state.color="all";render();};return c;};w.appendChild(mk("all","전체"));cats.forEach(c=>w.appendChild(mk(c,c)));}
-function renderColorTabs(){const el=$("#colorTabs");if(!el)return;if(!isMagCat(state.catFilter)){el.style.display="none";el.innerHTML="";return;}const sec=CATALOG[state.factory].sections.find(s=>s.cat===state.catFilter);if(!sec){el.style.display="none";return;}const cols=[];sec.groups.forEach(g=>COLORS.forEach(c=>{if(g.name.indexOf(c)>=0&&cols.indexOf(c)<0)cols.push(c);}));if(!cols.length){el.style.display="none";el.innerHTML="";return;}el.style.display="flex";el.innerHTML="";const lab=document.createElement("span");lab.textContent="색상";lab.style.cssText="font-size:11px;color:#9ca3af;align-self:center;margin-right:2px;font-weight:700";el.appendChild(lab);const mk=(k,l)=>{const d=document.createElement("div");d.className="chip"+(state.color===k?" on":"");if(state.color===k){d.style.background="var(--amber)";d.style.borderColor="var(--amber2)";d.style.color="#3a2600";}d.textContent=l;d.onclick=()=>{state.color=k;render();};return d;};el.appendChild(mk("all","전체"));cols.forEach(c=>el.appendChild(mk(c,c)));}
+function renderTabs(){const t=$("#tabs");t.innerHTML="";Object.keys(CAT).forEach(fk=>{const b=document.createElement("div");b.className="tab"+(fk===state.factory?" active":"");b.textContent=CAT[fk].label;b.onclick=()=>{state.factory=fk;state.catFilter="all";state.color="all";syncSupplier();render();updateBookInfo();};t.appendChild(b);});}
+function renderChips(){const w=$("#chips");w.innerHTML="";const cats=CAT[state.factory].sections.map(s=>s.cat);const mk=(k,l)=>{const c=document.createElement("div");c.className="chip"+(state.catFilter===k?" on":"");c.textContent=l;c.onclick=()=>{state.catFilter=k;state.color="all";render();};return c;};w.appendChild(mk("all","전체"));cats.forEach(c=>w.appendChild(mk(c,c)));}
+function renderColorTabs(){const el=$("#colorTabs");if(!el)return;if(!isMagCat(state.catFilter)){el.style.display="none";el.innerHTML="";return;}const sec=CAT[state.factory].sections.find(s=>s.cat===state.catFilter);if(!sec){el.style.display="none";return;}const cols=[];sec.groups.forEach(g=>COLORS.forEach(c=>{if(g.name.indexOf(c)>=0&&cols.indexOf(c)<0)cols.push(c);}));if(!cols.length){el.style.display="none";el.innerHTML="";return;}el.style.display="flex";el.innerHTML="";const lab=document.createElement("span");lab.textContent="색상";lab.style.cssText="font-size:11px;color:#9ca3af;align-self:center;margin-right:2px;font-weight:700";el.appendChild(lab);const mk=(k,l)=>{const d=document.createElement("div");d.className="chip"+(state.color===k?" on":"");if(state.color===k){d.style.background="var(--amber)";d.style.borderColor="var(--amber2)";d.style.color="#3a2600";}d.textContent=l;d.onclick=()=>{state.color=k;render();};return d;};el.appendChild(mk("all","전체"));cols.forEach(c=>el.appendChild(mk(c,c)));}
 
 function prodSel(p){return p.options.reduce((a,o)=>a+((state.qty[o._id]||0)>0?1:0),0);}
 function dims(p){const colors=[],temps=[];p.options.forEach(o=>{if(o.color&&colors.indexOf(o.color)<0)colors.push(o.color);if(o.temp&&temps.indexOf(o.temp)<0)temps.push(o.temp);});return {colors,temps};}
@@ -242,7 +328,7 @@ function matrixHtml(p){
 
 function renderCatalog(){
   const box=$("#catalog");box.innerHTML="";
-  const fac=CATALOG[state.factory];const q=state.search.trim().toLowerCase();let shown=0;
+  const fac=CAT[state.factory];const q=state.search.trim().toLowerCase();let shown=0;
   fac.sections.forEach(sec=>{
     if(state.catFilter!=="all"&&sec.cat!==state.catFilter)return;
     const magColor=isMagCat(sec.cat)&&state.color!=="all";
@@ -298,9 +384,8 @@ function selected(){const out=[];Object.keys(state.qty).forEach(id=>{const o=OPT
    되돌려 놓고 '수정 모드'로 들어간다. 카탈로그에서 이름을 못 찾는 품목
    (품목명이 바뀌었거나 외부 엑셀에서 가져온 것)은 '기타 품목'으로
    발주 내역 아래에 그대로 남겨 수량만 고칠 수 있게 한다. */
-let NAME2OPT=null;
 function nameIndex(){if(NAME2OPT)return NAME2OPT;NAME2OPT={};Object.keys(OPTS).forEach(id=>{const o=OPTS[id];const k=fullName(o);(NAME2OPT[k]||(NAME2OPT[k]=[])).push(o);});return NAME2OPT;}
-function findOpt(name,supplier){const list=nameIndex()[String(name||"").trim()];if(!list||!list.length)return null;if(supplier){const hit=list.find(o=>CATALOG[o._p._fk].label===supplier);if(hit)return hit;}return list[0];}
+function findOpt(name,supplier){const list=nameIndex()[String(name||"").trim()];if(!list||!list.length)return null;if(supplier){const hit=list.find(o=>CAT[o._p._fk].label===supplier);if(hit)return hit;}return list[0];}
 function editExtras(){return (state.edit&&state.edit.extras)||[];}
 function hasItems(){return selected().length>0||editExtras().some(x=>+x.qty>0);}
 function exitEdit(silent){state.edit=null;state.qty={};state.notes={};$("#editBar").style.display="none";render();updateBookInfo();if(!silent)toast("수정을 취소했습니다");}
@@ -310,7 +395,7 @@ function loadOrderForEdit(key,idx){
   (ord.items||[]).forEach(it=>{const o=findOpt(it.name,ord.supplier);
     if(o){state.qty[o._id]=(+it.qty||0);if(it.note)state.notes[o._id]=it.note;hit++;}
     else{extras.push({name:it.name,qty:+it.qty||0,note:it.note||"",img:it.img||""});}});
-  const fk=Object.keys(CATALOG).find(k=>CATALOG[k].label===ord.supplier);if(fk)state.factory=fk;
+  const fk=Object.keys(CAT).find(k=>CAT[k].label===ord.supplier);if(fk)state.factory=fk;
   $("#orderDate").value=ord.date||$("#orderDate").value;$("#supplier").value=ord.supplier||"";
   $("#manager").value=ord.manager||"";$("#memo").value=ord.memo||"";
   state.edit={key,sheet:ord.sheet||ord.date||"",extras};
@@ -330,7 +415,7 @@ async function saveEdit(){
   const items=selected().map(s=>({name:fullName(s.o),qty:s.qty,note:s.note||""}))
     .concat(editExtras().filter(x=>+x.qty>0).map(x=>({name:x.name,qty:+x.qty,note:x.note||""})));
   if(!items.length){toast("품목이 없습니다 · 발주 자체를 지우려면 목록에서 [삭제]를 쓰세요");return;}
-  const date=$("#orderDate").value||"";const supplier=($("#supplier").value||CATALOG[state.factory].label).trim();
+  const date=$("#orderDate").value||"";const supplier=($("#supplier").value||CAT[state.factory].label).trim();
   const memo=$("#memo").value||"";const ym=ymOf(date),nk=bucketKey(supplier,ym);
   let sheet=e.sheet,ok=false;
   if(syncOn()){
@@ -431,6 +516,24 @@ async function callSync(action,payload,key){
   finally{SYNC.busy--;renderSync();}
 }
 function pullBucket(key){return callSync("load",{},key);}
+/* ── 제품 목록 동기화 ─────────────────────────────────────────── */
+async function syncCatalog(force){
+  if(!syncOn())return;
+  try{
+    if(!force){const v=await api("catalogVersion",{});if(v.version===CATVER&&OVERLAY)return;}
+    const g=await api("catalogGet",{});
+    CATVER=g.version||0;OVERLAY=g.overlay||{add:[],edit:{},del:[]};
+    saveCatCache();applyOverlay();state.qty={};state.notes={};
+  }catch(e){console.error("catalog",e);}
+}
+async function pushCatalog(what,subject){
+  if(!syncOn()){saveCatCache();applyOverlay();return true;}
+  try{
+    const j=await api("catalogPut",{overlay:OVERLAY,baseVersion:CATVER,what:what||"변경",
+      subject:subject||"",manager:$("#manager").value.trim()});
+    CATVER=j.version;saveCatCache();applyOverlay();return true;
+  }catch(e){console.error(e);toast("제품 목록 저장 실패 — "+(e.message||e));return false;}
+}
 async function pullBuckets(){
   if(!syncOn())return;
   SYNC.busy++;renderSync();
@@ -444,7 +547,7 @@ async function pullBuckets(){
   finally{SYNC.busy--;renderSync();}
 }
 function ymOf(date){const m=/^(\d{4})-(\d{2})/.exec(date||"");if(m)return m[1]+"-"+m[2];const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
-function supplierOf(){return ($("#supplier").value||CATALOG[state.factory].label).trim()||CATALOG[state.factory].label;}
+function supplierOf(){return ($("#supplier").value||CAT[state.factory].label).trim()||CAT[state.factory].label;}
 function bucketKey(supplier,ym){return supplier+"|"+ym;}
 function currentKey(){return bucketKey(supplierOf(),ymOf($("#orderDate").value||""));}
 function sheetNameFor(existing,date){let base;const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(date||"");if(m)base=parseInt(m[2],10)+"월"+parseInt(m[3],10)+"일";else base=(date||"발주").replace(/[:\\\/?*\[\]]/g,"");base=base.slice(0,28);let name=base,n=2;while(existing.indexOf(name)>=0){name=base+"("+n+")";n++;}return name;}
@@ -505,7 +608,7 @@ async function downloadExcel(){
   const manager=$("#manager").value.trim();
   if(!manager){toast("담당자 이름을 입력해 주세요 — 누가 발주했는지 서버에 남습니다");$("#manager").focus();return;}
   try{
-    const date=$("#orderDate").value||"";const supplier=($("#supplier").value||CATALOG[state.factory].label).trim();const memo=$("#memo").value||"";
+    const date=$("#orderDate").value||"";const supplier=($("#supplier").value||CAT[state.factory].label).trim();const memo=$("#memo").value||"";
     const ym=ymOf(date),key=bucketKey(supplier,ym);
     const items=sel.map(s=>({name:fullName(s.o),qty:s.qty,note:s.note||""}));
     // 서버 장부에 한 건 추가 → 서버가 돌려준 '그 달 전체'로 파일을 만든다
@@ -610,21 +713,293 @@ async function downloadCurrentBucket(){if(typeof ExcelJS==="undefined"){toast("�
 async function saveOrder(sel,meta){
   if(!SAVE_URL)return false;
   try{
-    const payload={date:meta.date,supplier:meta.supplier,manager:meta.manager,memo:meta.memo,factory:CATALOG[state.factory].label,totalQty:sel.reduce((a,s)=>a+s.qty,0),items:sel.map(s=>({name:fullName(s.o),cat:s.o._p._cat,qty:s.qty,note:s.note||""}))};
+    const payload={date:meta.date,supplier:meta.supplier,manager:meta.manager,memo:meta.memo,factory:CAT[state.factory].label,totalQty:sel.reduce((a,s)=>a+s.qty,0),items:sel.map(s=>({name:fullName(s.o),cat:s.o._p._cat,qty:s.qty,note:s.note||""}))};
     await fetch(SAVE_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
     return true;
   }catch(e){console.error("save fail",e);return false;}
 }
 async function copyTable(){const sel=selected();if(!sel.length)return;const head=["No","품목명","수량","기타"];const rows=sel.map((s,i)=>[i+1,fullName(s.o),s.qty,s.note||""]);const html=`<table><tr>${head.map(h=>`<th>${escH(h)}</th>`).join("")}</tr>${rows.map(rw=>`<tr>${rw.map(c=>`<td>${escH(c)}</td>`).join("")}</tr>`).join("")}</table>`;const tsv=[head.join("\t"),...rows.map(rw=>rw.join("\t"))].join("\n");try{await navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([html],{type:"text/html"}),"text/plain":new Blob([tsv],{type:"text/plain"})})]);toast("표를 복사했습니다");}catch(e){try{await navigator.clipboard.writeText(tsv);toast("표를 복사했습니다");}catch(_){toast("복사 실패");}}}
 function clearAll(){if(!hasItems())return;if(confirm("입력한 수량을 모두 지울까요?")){state.qty={};state.notes={};editExtras().forEach(x=>x.qty=0);render();toast("초기화했습니다");}}
+/* ── 월별 발주 내역 ─────────────────────────────────────────────
+   서버 장부를 그대로 읽어 보여준다. 여기서는 고치지 않는다(읽기 전용).
+   고치는 건 [발주 목록]의 수정/삭제가 담당한다. */
+let HIST={buckets:[],sel:null,orders:[],view:"day",loading:false};
+async function openHistory(){$("#hist").classList.add("show");HIST.sel=null;await loadHistory();}
+function closeHistory(){$("#hist").classList.remove("show");}
+async function loadHistory(){
+  HIST.loading=true;renderHist();
+  try{const j=await api("buckets",{});
+      HIST.buckets=(j.buckets||[]).sort((a,b)=>(b.ym+b.supplier).localeCompare(a.ym+a.supplier));}
+  catch(e){console.error(e);HIST.buckets=null;}
+  HIST.loading=false;renderHist();
+}
+async function pickBucket(supplier,ym){
+  HIST.sel={supplier,ym};HIST.loading=true;renderHist();
+  try{const j=await api("load",{supplier,ym});HIST.orders=j.orders||[];}
+  catch(e){console.error(e);HIST.orders=[];}
+  HIST.loading=false;renderHist();
+}
+const num=n=>(+n||0).toLocaleString();
+function renderHist(){
+  const body=$("#histBody"),bar=$("#histBar"),sum=$("#histSum");
+  if(!syncOn()){bar.innerHTML="";sum.textContent="";
+    body.innerHTML='<div class="mempty">서버가 설정되지 않아 내역을 볼 수 없습니다.</div>';return;}
+  if(HIST.loading){body.innerHTML='<div class="mempty">불러오는 중…</div>';return;}
+  if(HIST.buckets===null){body.innerHTML='<div class="mempty">서버에 연결하지 못했습니다.</div>';return;}
+
+  if(!HIST.sel){
+    bar.innerHTML='<span class="gcount">월 · 공급처별 요약</span>';
+    if(!HIST.buckets.length){body.innerHTML='<div class="mempty">아직 발주가 없습니다.</div>';sum.textContent="";return;}
+    const byYm={};HIST.buckets.forEach(b=>{(byYm[b.ym]||(byYm[b.ym]=[])).push(b);});
+    let h="";
+    Object.keys(byYm).sort().reverse().forEach(ym=>{
+      const list=byYm[ym],tq=list.reduce((a,b)=>a+b.qty,0),ts=list.reduce((a,b)=>a+b.sheets,0);
+      h+=`<div class="pcat">${escH(ym)} · 발주 ${ts}일 · 총 ${num(tq)}개</div>`
+        +'<table class="otbl"><tr><th>공급처</th><th class="c">발주일수</th><th class="c">총 수량</th><th class="c"></th></tr>';
+      list.forEach(b=>{h+=`<tr><td>${escH(b.supplier)}</td><td class="c">${b.sheets}</td><td class="c">${num(b.qty)}</td>`
+        +`<td class="c"><button class="edt" data-s="${escH(b.supplier)}" data-y="${escH(b.ym)}">자세히</button></td></tr>`;});
+      h+="</table>";
+    });
+    body.innerHTML=h;
+    body.querySelectorAll(".edt").forEach(b=>b.onclick=()=>pickBucket(b.getAttribute("data-s"),b.getAttribute("data-y")));
+    sum.textContent=`${HIST.buckets.length}개 파일`;return;
+  }
+
+  const sel=HIST.sel,orders=HIST.orders;
+  const on='style="border-color:#1d3559;color:#1d3559;font-weight:700"';
+  bar.innerHTML=`<button class="btn ghost sm" id="histBack">← 요약</button>`
+    +`<span class="gcount" style="margin-left:8px">${escH(sel.supplier)} · ${escH(sel.ym)}</span>`
+    +`<span style="margin-left:auto;display:flex;gap:6px">`
+    +`<button class="btn ghost sm hv" data-v="day" ${HIST.view==="day"?on:""}>날짜별</button>`
+    +`<button class="btn ghost sm hv" data-v="item" ${HIST.view==="item"?on:""}>품목별 누적</button></span>`;
+  $("#histBack").onclick=()=>{HIST.sel=null;renderHist();};
+  bar.querySelectorAll(".hv").forEach(b=>b.onclick=()=>{HIST.view=b.getAttribute("data-v");renderHist();});
+  const total=orders.reduce((a,o)=>a+(o.items||[]).reduce((x,i)=>x+(+i.qty||0),0),0);
+  sum.textContent=`발주 ${orders.length}일 · 총 ${num(total)}개`;
+  if(!orders.length){body.innerHTML='<div class="mempty">이 달 발주가 없습니다.</div>';return;}
+
+  if(HIST.view==="day"){
+    let h='<table class="otbl"><tr><th>날짜(시트)</th><th>담당자</th><th class="c">품목</th><th class="c">수량</th></tr>';
+    orders.forEach(o=>{const q=(o.items||[]).reduce((a,i)=>a+(+i.qty||0),0);
+      h+=`<tr><td><b>${escH(o.sheet||o.date)}</b></td><td>${escH(o.manager||"-")}</td>`
+        +`<td class="c">${(o.items||[]).length}종</td><td class="c"><b>${num(q)}</b></td></tr>`;
+      (o.items||[]).forEach(i=>{h+=`<tr><td colspan="2" style="padding-left:20px;color:#4b5563;font-size:11px">${escH(i.name)}</td>`
+        +`<td class="c" style="font-size:11px;color:#9ca3af">${escH(i.note||"")}</td>`
+        +`<td class="c" style="font-size:11px">${num(i.qty)}</td></tr>`;});
+    });
+    body.innerHTML=h+"</table>";
+  }else{
+    const agg={};orders.forEach(o=>(o.items||[]).forEach(i=>{agg[i.name]=(agg[i.name]||0)+(+i.qty||0);}));
+    const rows=Object.keys(agg).map(k=>[k,agg[k]]).sort((a,b)=>b[1]-a[1]);
+    let h='<table class="otbl"><tr><th class="c">순위</th><th>품목명</th><th class="c">누적 수량</th></tr>';
+    rows.forEach((r,i)=>{h+=`<tr><td class="c">${i+1}</td><td>${escH(r[0])}</td><td class="c"><b>${num(r[1])}</b></td></tr>`;});
+    body.innerHTML=h+"</table>";
+  }
+}
+/* ── 제품 관리 ───────────────────────────────────────────────────
+   내장 제품은 '수정'하면 오버레이에 덮어쓸 내용만 쌓이고, '삭제'하면
+   숨김 목록에 들어간다. 원본 CATALOG 는 건드리지 않아서 되돌릴 수 있다. */
+let pmEdit=null;
+function openProducts(){pmEdit=null;$("#pmgr").classList.add("show");syncCatalog().then(renderPmgr).catch(renderPmgr);renderPmgr();}
+function closeProducts(){$("#pmgr").classList.remove("show");}
+function pmFactory(){return pmEdit&&pmEdit.fk?pmEdit.fk:state.factory;}
+function pmDirtyRender(){applyOverlay();state.qty={};state.notes={};render();renderPmgr();}
+
+function renderPmgr(){
+  $("#pmgrTitle").textContent=pmEdit?(pmEdit.isNew?"새 제품 추가":"제품 수정"):"제품 관리";
+  if(pmEdit){renderPmForm();return;}
+  const fk=state.factory;
+  $("#pmgrBar").innerHTML=Object.keys(CAT).map(k=>
+    `<button class="btn ghost sm pmtab" data-fk="${k}" style="${k===fk?'border-color:#1d3559;color:#1d3559;font-weight:700':''}">${escH(CAT[k].label)}</button>`
+  ).join("")+`<span class="gcount" style="margin-left:auto">${CAT[fk].sections.reduce((a,s)=>a+s.groups.reduce((b,g)=>b+g.products.length,0),0)}제품</span>`;
+  $("#pmgrBar").querySelectorAll(".pmtab").forEach(b=>b.onclick=()=>{state.factory=b.dataset.fk;render();renderPmgr();});
+  let h='<div class="ptree">';
+  CAT[fk].sections.forEach(sec=>{
+    h+=`<div class="pcat">${escH(sec.cat)}</div>`;
+    sec.groups.forEach(g=>{
+      h+=`<div class="pgrp">${escH(g.name)}</div>`;
+      g.products.forEach(p=>{
+        const tag=p._added?'<span class="badge-new">추가</span>':(OVERLAY.edit&&OVERLAY.edit[p._key]?'<span class="badge-ed">수정됨</span>':"");
+        h+=`<div class="prow"><img src="${pImg(p)}"><div class="pn"><b>${escH(p.name)}${tag}</b>`
+          +`<span>${escH(p.spec||"")}${p.single?" · 옵션 없음":" · 옵션 "+(p.options||[]).length+"개"}</span></div>`
+          +`<button class="edt" data-k="${escH(p._key)}">수정</button> <button class="del" data-k="${escH(p._key)}">삭제</button></div>`;
+      });
+    });
+  });
+  h+='</div>';
+  $("#pmgrBody").innerHTML=h||'<div class="mempty">제품이 없습니다.</div>';
+  $("#pmgrBody").querySelectorAll(".edt").forEach(b=>b.onclick=()=>startEditProduct(b.dataset.k));
+  $("#pmgrBody").querySelectorAll(".del").forEach(b=>b.onclick=()=>deleteProduct(b.dataset.k));
+  $("#pmgrFoot").innerHTML='<button class="btn sm" id="pmNew">+ 새 제품 추가</button><span style="flex:1"></span>'
+    +'<button class="btn ghost sm" id="pmReset">내가 바꾼 것 되돌리기</button><button class="btn ghost sm" id="pmDone">닫기</button>';
+  $("#pmNew").onclick=startNewProduct;
+  $("#pmDone").onclick=closeProducts;
+  $("#pmReset").onclick=resetOverlay;
+}
+
+function findProd(key){
+  for(const fk of Object.keys(CAT))
+    for(const sec of CAT[fk].sections)
+      for(const g of sec.groups)
+        for(const p of g.products) if(p._key===key)return p;
+  return null;
+}
+function optCfg(p){
+  const {colors,temps}=dims(p);
+  return {colors,temps,swap:!!p.swap,
+    mode:p.single?"none":(colors.length&&temps.length?"matrix":(colors.length?"color":"temp"))};
+}
+function startNewProduct(){
+  const fk=state.factory;
+  pmEdit={isNew:true,fk,cat:(CAT[fk].sections[0]||{}).cat||"",group:"",name:"",spec:"",note:"",
+    imgData:"",mode:"none",colors:"",temps:"",swap:false,key:null};
+  renderPmgr();
+}
+function startEditProduct(key){
+  const p=findProd(key);if(!p){toast("제품을 찾을 수 없습니다");return;}
+  const c=optCfg(p);
+  pmEdit={isNew:false,fk:p._fk,cat:p._cat,group:p._group,name:p.name,spec:p.spec||"",note:p.note||"",
+    imgData:p.imgData||"",mode:c.mode,colors:c.colors.join(", "),temps:c.temps.join(", "),
+    swap:c.swap,key,added:p._added||null,im:p.im,oldOptions:p.options||[]};
+  renderPmgr();
+}
+function renderPmForm(){
+  const e=pmEdit;
+  const cats=[...new Set(CAT[e.fk].sections.map(s=>s.cat))];
+  const groups=[...new Set(CAT[e.fk].sections.flatMap(s=>s.groups.map(g=>g.name)))];
+  $("#pmgrBar").innerHTML=`<span class="gcount">${escH(CAT[e.fk].label)} · ${e.isNew?"새 제품":"수정"}</span>`;
+  const opt=(v,cur)=>`<option value="${escH(v)}"${v===cur?" selected":""}>${escH(v)}</option>`;
+  $("#pmgrBody").innerHTML=`<div class="pform">
+    <label>공급처</label><select id="pfFk">${Object.keys(CAT).map(k=>opt(k,e.fk)).map((o,i)=>o.replace(/>([^<]*)</,'>'+escH(CAT[Object.keys(CAT)[i]].label)+'<')).join("")}</select>
+    <label>대분류</label><input type="text" id="pfCat" list="pfCatL" value="${escH(e.cat)}" placeholder="예: COB 라인바"><datalist id="pfCatL">${cats.map(c=>`<option value="${escH(c)}">`).join("")}</datalist>
+    <label>상위항목</label><input type="text" id="pfGrp" list="pfGrpL" value="${escH(e.group)}" placeholder="예: 8mm 라인바 부속"><datalist id="pfGrpL">${groups.map(c=>`<option value="${escH(c)}">`).join("")}</datalist>
+    <label>품목명</label><input type="text" id="pfName" value="${escH(e.name)}" placeholder="발주서에 찍히는 이름">
+    <label>규격</label><input type="text" id="pfSpec" value="${escH(e.spec)}" placeholder="예: W120 x H100 / 타공 Ø47">
+    <label>비고</label><input type="text" id="pfNote" value="${escH(e.note)}" placeholder="공장에 전할 메모">
+    <label>사진</label><div class="photobox"><img id="pfImg" src="${e.imgData||(e.im>=0?IMAGES[e.im]:placeholderSVG(e.name))}">
+      <span><button class="btn ghost sm" id="pfPick">사진 선택</button>
+      ${e.imgData?'<button class="btn ghost sm" id="pfClr">지우기</button>':''}
+      <div class="hint2">가로 520px JPEG로 줄여서 저장돼</div></span></div>
+    <label>옵션</label><select id="pfMode">
+      ${opt("none",e.mode).replace(">none<",">옵션 없음 (수량 한 칸)<")}
+      ${opt("color",e.mode).replace(">color<",">색상만<")}
+      ${opt("temp",e.mode).replace(">temp<",">색온도(또는 타입)만<")}
+      ${opt("matrix",e.mode).replace(">matrix<",">색상 × 색온도(타입) 매트릭스<")}
+    </select>
+    <label>색상 목록</label><div><input type="text" id="pfColors" value="${escH(e.colors)}" placeholder="블랙, 화이트, 니켈"><div class="hint2">쉼표로 구분</div></div>
+    <label>색온도/타입</label><div><input type="text" id="pfTemps" value="${escH(e.temps)}" placeholder="3000K, 4000K  또는  A타입, B타입"><div class="hint2">쉼표로 구분</div></div>
+    <label>표 방향</label><div><label style="font-size:12px;color:#374151"><input type="checkbox" id="pfSwap"${e.swap?" checked":""}> 행=색온도/타입, 열=색상 으로 뒤집기</label></div>
+  </div>`;
+  const sync=()=>{const m=$("#pfMode").value;
+    $("#pfColors").closest("div").parentElement.style.opacity=(m==="color"||m==="matrix")?1:.35;
+    $("#pfTemps").closest("div").parentElement.style.opacity=(m==="temp"||m==="matrix")?1:.35;
+    $("#pfSwap").disabled=(m!=="matrix");};
+  $("#pfMode").onchange=sync;sync();
+  $("#pfPick").onclick=()=>$("#pmgrPhoto").click();
+  if($("#pfClr"))$("#pfClr").onclick=()=>{pmEdit.imgData="";renderPmgr();};
+  $("#pmgrFoot").innerHTML='<button class="btn ghost sm" id="pfBack">← 목록</button><span style="flex:1"></span>'
+    +'<button class="btn primary sm" id="pfSave">저장</button>';
+  $("#pfBack").onclick=()=>{pmEdit=null;renderPmgr();};
+  $("#pfSave").onclick=saveProduct;
+}
+function readForm(){
+  const e=pmEdit;
+  e.fk=$("#pfFk").value;e.cat=$("#pfCat").value.trim();e.group=$("#pfGrp").value.trim();
+  e.name=$("#pfName").value.trim();e.spec=$("#pfSpec").value.trim();e.note=$("#pfNote").value.trim();
+  e.mode=$("#pfMode").value;e.colors=$("#pfColors").value;e.temps=$("#pfTemps").value;e.swap=$("#pfSwap").checked;
+}
+const splitList=v=>String(v||"").split(",").map(x=>x.trim()).filter(Boolean);
+function buildProduct(e){
+  const colors=(e.mode==="color"||e.mode==="matrix")?splitList(e.colors):[];
+  const temps=(e.mode==="temp"||e.mode==="matrix")?splitList(e.temps):[];
+  const old={};(e.oldOptions||[]).forEach(o=>{old[o.label]=o;});
+  const mk=(label,color,temp)=>{const o=old[label]||{};
+    return {label,color,temp,im:(o.im!=null?o.im:(e.im!=null?e.im:-1)),...(o.imgData?{imgData:o.imgData}:{})};};
+  let options=[],single=false;
+  if(e.mode==="none"){single=true;options=[mk("기본","","")];}
+  else if(e.mode==="color")options=colors.map(c=>mk(c,c,""));
+  else if(e.mode==="temp")options=temps.map(t=>mk(t,"",t));
+  else colors.forEach(c=>temps.forEach(t=>options.push(mk((c+" "+t).trim(),c,t))));
+  if(!options.length){single=true;options=[mk("기본","","")];}
+  const p={name:e.name,spec:e.spec,page:"",note:e.note,im:(e.im!=null?e.im:-1),single,options};
+  if(e.imgData)p.imgData=e.imgData;
+  if(e.mode==="matrix"&&e.swap)p.swap=true;
+  return p;
+}
+async function saveProduct(){
+  readForm();const e=pmEdit;
+  if(!e.name){toast("품목명을 입력해 주세요");$("#pfName").focus();return;}
+  if(!e.cat||!e.group){toast("대분류와 상위항목을 입력해 주세요");return;}
+  const p=buildProduct(e);
+  if(e.isNew){
+    OVERLAY.add=OVERLAY.add||[];
+    OVERLAY.add.push({id:"n"+Date.now()+Math.floor(Math.random()*1000),fk:e.fk,cat:e.cat,group:e.group,product:p});
+  }else if(e.added){
+    const a=(OVERLAY.add||[]).find(x=>x.id===e.added);
+    if(a){a.fk=e.fk;a.cat=e.cat;a.group=e.group;a.product=p;}
+  }else{
+    OVERLAY.edit=OVERLAY.edit||{};OVERLAY.edit[e.key]=p;
+    // 대분류·상위항목을 옮겼으면: 원래 자리는 숨기고 새 자리에 추가로 넣는다
+    const parts=e.key.split("|");
+    if(parts[1]!==e.cat||parts[2]!==e.group||parts[0]!==e.fk){
+      delete OVERLAY.edit[e.key];
+      OVERLAY.del=OVERLAY.del||[];if(OVERLAY.del.indexOf(e.key)<0)OVERLAY.del.push(e.key);
+      OVERLAY.add=OVERLAY.add||[];
+      OVERLAY.add.push({id:"n"+Date.now()+Math.floor(Math.random()*1000),fk:e.fk,cat:e.cat,group:e.group,product:p});
+    }
+  }
+  const ok=await pushCatalog(e.isNew?"추가":"수정",e.name);
+  pmEdit=null;state.qty={};state.notes={};render();renderPmgr();
+  toast(ok?`'${e.name}' 저장했습니다`:"저장 실패 — 이 PC에만 반영됨");
+}
+async function deleteProduct(key){
+  const p=findProd(key);if(!p)return;
+  if(!confirm(`'${p.name}' 을(를) 목록에서 지울까요?\n\n· 이미 나간 발주서와 기록은 그대로 남습니다.\n· [내가 바꾼 것 되돌리기]로 되살릴 수 있습니다.`))return;
+  if(p._added){OVERLAY.add=(OVERLAY.add||[]).filter(a=>a.id!==p._added);}
+  else{OVERLAY.del=OVERLAY.del||[];if(OVERLAY.del.indexOf(key)<0)OVERLAY.del.push(key);
+       if(OVERLAY.edit)delete OVERLAY.edit[key];}
+  const ok=await pushCatalog("삭제",p.name);
+  state.qty={};state.notes={};render();renderPmgr();
+  toast(ok?`'${p.name}' 지웠습니다`:"저장 실패 — 이 PC에만 반영됨");
+}
+async function resetOverlay(){
+  const n=(OVERLAY.add||[]).length+Object.keys(OVERLAY.edit||{}).length+(OVERLAY.del||[]).length;
+  if(!n){toast("바꾼 내용이 없습니다");return;}
+  if(!confirm(`화면에서 바꾼 제품 ${n}건을 전부 되돌려 원래 목록으로 돌아갈까요?\n\n· 추가한 제품은 사라지고, 수정·삭제한 제품은 원래대로 돌아옵니다.\n· 발주 기록은 영향받지 않습니다.`))return;
+  OVERLAY={add:[],edit:{},del:[]};
+  const ok=await pushCatalog("전체 되돌리기","");
+  state.qty={};state.notes={};render();renderPmgr();
+  toast(ok?"원래 목록으로 되돌렸습니다":"저장 실패");
+}
+/* 사진 고르면 520px JPEG 로 줄여서 넣는다 */
+function pickPhoto(file){
+  if(!file)return;
+  const rd=new FileReader();
+  rd.onload=()=>{const img=new Image();
+    img.onload=()=>{
+      const w=Math.min(520,img.naturalWidth||520),h=Math.round((img.naturalHeight||w)*w/(img.naturalWidth||w));
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,w,h);g.drawImage(img,0,0,w,h);
+      pmEdit.imgData=c.toDataURL("image/jpeg",0.82);renderPmgr();
+    };
+    img.onerror=()=>toast("이미지를 읽지 못했습니다");
+    img.src=rd.result;};
+  rd.onerror=()=>toast("파일을 읽지 못했습니다");
+  rd.readAsDataURL(file);
+}
 let tT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),2200);}
-function syncSupplier(){const el=$("#supplier");if(!el)return;const labels=Object.keys(CATALOG).map(k=>CATALOG[k].label);if(!el.value.trim()||labels.includes(el.value.trim()))el.value=CATALOG[state.factory].label;}
+function syncSupplier(){const el=$("#supplier");if(!el)return;const labels=Object.keys(CAT).map(k=>CAT[k].label);if(!el.value.trim()||labels.includes(el.value.trim()))el.value=CAT[state.factory].label;}
 (function init(){const d=new Date();$("#orderDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");syncSupplier();$("#search").oninput=e=>{state.search=e.target.value;renderCatalog();};$("#btnExcel").onclick=downloadExcel;$("#btnCopy").onclick=copyTable;$("#btnClear").onclick=clearAll;$("#btnNewBook").onclick=resetMonthBook;$("#btnManage").onclick=openManager;$("#btnEditCancel").onclick=()=>exitEdit();$("#mgrClose").onclick=closeManager;$("#mgrDone").onclick=closeManager;$("#mgrDownload").onclick=downloadCurrentBucket;$("#mgrImport").onclick=()=>$("#mgrFile").click();$("#mgrTrash").onclick=toggleTrashView;$("#mgrFile").onchange=async e=>{await importFiles(e.target.files);e.target.value="";};$("#mgr").addEventListener("click",e=>{if(e.target===$("#mgr"))closeManager();});$("#btnSyncPull").onclick=async()=>{await pullBucket(currentKey());updateBookInfo();if($("#mgr").classList.contains("show"))renderMgrList();toast(SYNC.ok?"서버에서 불러왔습니다":"서버 연결 실패");};
   try{$("#manager").value=localStorage.getItem("kant_manager")||"";}catch(_){}
   $("#manager").oninput=e=>{try{localStorage.setItem("kant_manager",e.target.value.trim());}catch(_){}};
   const resync=()=>{updateBookInfo();pullBucket(currentKey()).then(updateBookInfo);};
   $("#supplier").oninput=updateBookInfo;$("#supplier").onchange=resync;$("#orderDate").onchange=resync;
-  render();updateBookInfo();renderSync();pullBucket(currentKey()).then(updateBookInfo);})();
+  $("#btnHistory").onclick=openHistory;$("#histClose").onclick=closeHistory;$("#histDone").onclick=closeHistory;$("#histReload").onclick=loadHistory;$("#hist").addEventListener("click",e=>{if(e.target===$("#hist"))closeHistory();});$("#btnProducts").onclick=openProducts;$("#pmgrClose").onclick=closeProducts;
+  $("#pmgr").addEventListener("click",e=>{if(e.target===$("#pmgr"))closeProducts();});
+  $("#pmgrPhoto").onchange=e=>{pickPhoto(e.target.files[0]);e.target.value="";};
+  render();updateBookInfo();renderSync();
+  pullBucket(currentKey()).then(updateBookInfo);
+  syncCatalog().then(()=>{render();if($("#pmgr").classList.contains("show"))renderPmgr();});})();
 </script>
 </body>
 </html>
