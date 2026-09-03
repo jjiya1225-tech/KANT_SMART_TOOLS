@@ -117,12 +117,14 @@
   .pform .hint2{font-size:10px;color:var(--muted);margin-top:2px}
   .photobox{display:flex;align-items:center;gap:10px}
   .photobox img{width:64px;height:64px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px}
-  header.top .topnav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
-  header.top .topnav button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.20);color:#e8eef8;border-radius:8px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
-  header.top .topnav button:hover{background:rgba(255,255,255,.20);color:#fff}
-  @media(max-width:720px){header.top{flex-wrap:wrap}header.top .sub{display:none}header.top .topnav{width:100%;margin-left:0}}
+  .tabrow{display:flex;align-items:flex-end;gap:12px;margin-bottom:14px}
+  .tabrow .tabs{margin-bottom:0}
+  .topnav{margin-left:auto;display:flex;gap:7px;padding-bottom:3px}
+  .topnav button{background:#fff;border:1px solid #c7d0de;color:var(--navy);border-radius:9px;padding:9px 16px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:0 1px 2px rgba(19,37,64,.05)}
+  .topnav button:hover{background:var(--navy);border-color:var(--navy);color:#fff}
   .modal-bg{position:fixed;inset:0;background:rgba(19,37,64,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
   .modal-bg.show{display:flex}
+  body.noscroll{overflow:hidden}
   .modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
   .modal .mhead{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line)}
   .modal .mhead h3{margin:0;font-size:16px;color:var(--navy)}
@@ -160,9 +162,9 @@
 </style>
 </head>
 <body>
-<header class="top"><div class="logo">KANT<b>·</b>발주</div><div class="sub">중국 공장 발주 관리 시스템</div><nav class="topnav"><button id="btnHistory">월별 발주 내역</button><button id="btnProducts">제품 관리</button><button id="btnManage">발주 목록</button></nav></header>
+<header class="top"><div class="logo">KANT<b>·</b>발주</div><div class="sub">중국 공장 발주 관리 시스템</div></header>
 <div class="wrap">
-  <div class="tabs" id="tabs"></div>
+  <div class="tabrow"><div class="tabs" id="tabs"></div><nav class="topnav"><button id="btnHistory">월별 발주 내역</button><button id="btnProducts">제품 관리</button><button id="btnManage">발주 목록</button></nav></div>
   <div class="infobar">
     <div class="field"><label>발주일자</label><input type="date" id="orderDate"></div>
     <div class="field"><label>공급처 <span class="lhint">발주서에 찍히고 파일명이 됩니다</span></label><input type="text" id="supplier" placeholder="예: 인하이"></div>
@@ -676,8 +678,10 @@ async function downloadExcel(){
 /* ── 발주 목록 관리(삭제/재다운로드) ───────────────────────────── */
 function bucketLabel(key,b){const ym=key.split("|")[1]||b.ym;const sup=b.supplier||b.project||"";return`칸트_${sup}_${monthOf(ym)}월발주  (${ym} · ${b.orders.length}건)`;}
 let mgrView="orders";
-async function openManager(){mgrView="orders";$("#mgrTrash").textContent="휴지통";$("#mgr").classList.add("show");await pullBuckets();const book=loadBook();const keys=Object.keys(book).filter(k=>book[k]&&book[k].orders&&book[k].orders.length).sort().reverse();const sel=$("#mgrBucket");sel.innerHTML="";if(!keys.length){sel.innerHTML='<option value="">저장된 발주 없음</option>';}else{const cur=currentKey();const start=keys.indexOf(cur)>=0?cur:keys[0];keys.forEach(k=>{const o=document.createElement("option");o.value=k;o.textContent=bucketLabel(k,book[k]);if(k===start)o.selected=true;sel.appendChild(o);});}sel.onchange=async()=>{await pullBucket(sel.value);renderMgrList();};$("#mgrBucketWrap").style.display="";$("#mgrDownload").style.display="";renderMgrList();}
-function closeManager(){$("#mgr").classList.remove("show");}
+async function openManager(){mgrView="orders";$("#mgrTrash").textContent="휴지통";$("#mgr").classList.add("show");lockScroll();await pullBuckets();const book=loadBook();const keys=Object.keys(book).filter(k=>book[k]&&book[k].orders&&book[k].orders.length).sort().reverse();const sel=$("#mgrBucket");sel.innerHTML="";if(!keys.length){sel.innerHTML='<option value="">저장된 발주 없음</option>';}else{const cur=currentKey();const start=keys.indexOf(cur)>=0?cur:keys[0];keys.forEach(k=>{const o=document.createElement("option");o.value=k;o.textContent=bucketLabel(k,book[k]);if(k===start)o.selected=true;sel.appendChild(o);});}sel.onchange=async()=>{await pullBucket(sel.value);renderMgrList();};$("#mgrBucketWrap").style.display="";$("#mgrDownload").style.display="";renderMgrList();}
+/* 창이 하나라도 떠 있으면 뒤 화면이 같이 스크롤되지 않게 잠근다 */
+function lockScroll(){document.body.classList.toggle("noscroll",!!document.querySelector(".modal-bg.show"));}
+function closeManager(){$("#mgr").classList.remove("show");lockScroll();}
 function toggleTrashView(){if(mgrView==="orders"){mgrView="trash";$("#mgrTrash").textContent="◀ 발주 목록";$("#mgrBucketWrap").style.display="none";$("#mgrDownload").style.display="none";renderTrashList();}else{openManager();}}
 function renderMgrList(){if(mgrView==="trash"){renderTrashList();return;}const book=loadBook();const key=$("#mgrBucket").value;const b=key&&book[key];const list=$("#mgrList"),sum=$("#mgrSum");if(!b||!b.orders.length){list.innerHTML='<div class="mempty">이 월에 저장된 발주가 없습니다.</div>';sum.textContent="";return;}
   let tot=0;const last=b.orders.length-1;const rows=b.orders.map((o,i)=>{const q=(o.items||[]).reduce((a,it)=>a+(+it.qty||0),0);const n=(o.items||[]).length;tot+=q;return`<tr><td class="c">${i+1}</td><td>${escH(o.sheet||o.date||"")}</td><td>${escH(o.supplier||"")}</td><td class="c">${n}종</td><td class="c">${q}</td><td class="c" style="white-space:nowrap"><button class="mv" data-k="${escH(key)}" data-i="${i}" data-d="-1"${i===0?" disabled":""}>▲</button><button class="mv" data-k="${escH(key)}" data-i="${i}" data-d="1"${i===last?" disabled":""}>▼</button> <button class="edt" data-k="${escH(key)}" data-i="${i}">수정</button> <button class="del" data-k="${escH(key)}" data-i="${i}">삭제</button></td></tr>`;}).join("");
@@ -767,8 +771,8 @@ function clearAll(){if(!hasItems())return;if(confirm("입력한 수량을 모두
    서버 장부를 그대로 읽어 보여준다. 여기서는 고치지 않는다(읽기 전용).
    고치는 건 [발주 목록]의 수정/삭제가 담당한다. */
 let HIST={buckets:[],sel:null,orders:[],view:"day",loading:false};
-async function openHistory(){$("#hist").classList.add("show");HIST.sel=null;await loadHistory();}
-function closeHistory(){$("#hist").classList.remove("show");}
+async function openHistory(){$("#hist").classList.add("show");lockScroll();HIST.sel=null;await loadHistory();}
+function closeHistory(){$("#hist").classList.remove("show");lockScroll();}
 async function loadHistory(){
   HIST.loading=true;renderHist();
   try{const j=await api("buckets",{});
@@ -843,8 +847,8 @@ function renderHist(){
    내장 제품은 '수정'하면 오버레이에 덮어쓸 내용만 쌓이고, '삭제'하면
    숨김 목록에 들어간다. 원본 CATALOG 는 건드리지 않아서 되돌릴 수 있다. */
 let pmEdit=null;
-function openProducts(){pmEdit=null;$("#pmgr").classList.add("show");syncCatalog().then(renderPmgr).catch(renderPmgr);renderPmgr();}
-function closeProducts(){$("#pmgr").classList.remove("show");}
+function openProducts(){pmEdit=null;$("#pmgr").classList.add("show");lockScroll();syncCatalog().then(renderPmgr).catch(renderPmgr);renderPmgr();}
+function closeProducts(){$("#pmgr").classList.remove("show");lockScroll();}
 function pmFactory(){return pmEdit&&pmEdit.fk?pmEdit.fk:state.factory;}
 function pmDirtyRender(){applyOverlay();state.qty={};state.notes={};render();renderPmgr();}
 
@@ -929,13 +933,16 @@ function renderPmForm(){
       ${opt("temp",e.mode).replace(">temp<",">색온도(또는 타입)만<")}
       ${opt("matrix",e.mode).replace(">matrix<",">색상 × 색온도(타입) 매트릭스<")}
     </select>
-    <label>색상 목록</label><div><input type="text" id="pfColors" value="${escH(e.colors)}" placeholder="블랙, 화이트, 니켈"><div class="hint2">쉼표로 구분</div></div>
-    <label>색온도/타입</label><div><input type="text" id="pfTemps" value="${escH(e.temps)}" placeholder="3000K, 4000K  또는  A타입, B타입"><div class="hint2">쉼표로 구분</div></div>
-    <label>표 방향</label><div><label style="font-size:12px;color:#374151"><input type="checkbox" id="pfSwap"${e.swap?" checked":""}> 행=색온도/타입, 열=색상 으로 뒤집기</label></div>
+    <label id="lbColors">색상 목록</label><div id="wrColors"><input type="text" id="pfColors" value="${escH(e.colors)}" placeholder="블랙, 화이트, 니켈"><div class="hint2">쉼표로 구분</div></div>
+    <label id="lbTemps">색온도/타입</label><div id="wrTemps"><input type="text" id="pfTemps" value="${escH(e.temps)}" placeholder="3000K, 4000K  또는  A타입, B타입"><div class="hint2">쉼표로 구분</div></div>
+    <label id="lbSwap">표 방향</label><div id="wrSwap"><label style="font-size:12px;color:#374151"><input type="checkbox" id="pfSwap"${e.swap?" checked":""}> 행=색온도/타입, 열=색상 으로 뒤집기</label></div>
   </div>`;
+  /* 고른 옵션 방식에 안 쓰이는 줄만 흐리게 한다 */
+  const dim=(ids,on)=>ids.forEach(id=>{const el=$("#"+id);if(el){el.style.opacity=on?"":"0.35";el.style.pointerEvents=on?"":"none";}});
   const sync=()=>{const m=$("#pfMode").value;
-    $("#pfColors").closest("div").parentElement.style.opacity=(m==="color"||m==="matrix")?1:.35;
-    $("#pfTemps").closest("div").parentElement.style.opacity=(m==="temp"||m==="matrix")?1:.35;
+    dim(["lbColors","wrColors"],m==="color"||m==="matrix");
+    dim(["lbTemps","wrTemps"],m==="temp"||m==="matrix");
+    dim(["lbSwap","wrSwap"],m==="matrix");
     $("#pfSwap").disabled=(m!=="matrix");};
   $("#pfMode").onchange=sync;sync();
   $("#pfPick").onclick=()=>$("#pmgrPhoto").click();
