@@ -164,7 +164,7 @@
 <body>
 <header class="top"><div class="logo">KANT<b>·</b>발주</div><div class="sub">중국 공장 발주 관리 시스템</div></header>
 <div class="wrap">
-  <div class="tabrow"><div class="tabs" id="tabs"></div><nav class="topnav"><button id="btnHistory">월별 발주 내역</button><button id="btnProducts">제품 관리</button><button id="btnManage">발주 목록</button></nav></div>
+  <div class="tabrow"><div class="tabs" id="tabs"></div><nav class="topnav"><button id="btnHistory">월별 발주</button><button id="btnManage">발주 관리</button><button id="btnProducts">제품 관리</button></nav></div>
   <div class="infobar">
     <div class="field"><label>발주일자</label><input type="date" id="orderDate"></div>
     <div class="field"><label>공급처 <span class="lhint">발주서에 찍히고 파일명이 됩니다</span></label><input type="text" id="supplier" placeholder="예: 인하이"></div>
@@ -198,7 +198,7 @@
   </div>
 <div class="modal-bg" id="mgr">
   <div class="modal">
-    <div class="mhead"><h3>발주 목록 관리</h3><button class="x" id="mgrClose">&times;</button></div>
+    <div class="mhead"><h3>발주 관리</h3><button class="x" id="mgrClose">&times;</button></div>
     <div class="mbar">
       <span id="mgrBucketWrap" style="display:flex;align-items:center;gap:8px"><label style="font-size:12px;color:var(--muted)">파일(월)</label><select id="mgrBucket"></select></span>
       <span id="mgrSum" class="gcount" style="margin-left:auto"></span>
@@ -225,7 +225,7 @@
 </div>
 <div class="modal-bg" id="hist">
   <div class="modal">
-    <div class="mhead"><h3>월별 발주 내역</h3><button class="x" id="histClose">&times;</button></div>
+    <div class="mhead"><h3>월별 발주</h3><button class="x" id="histClose">&times;</button></div>
     <div class="mbar" id="histBar"></div>
     <div class="mbody"><div id="histBody"></div></div>
     <div class="mfoot"><span class="gcount" id="histSum"></span><span style="flex:1"></span>
@@ -398,7 +398,7 @@ function setQtyFromPreview(id,v){
 
 function selected(){const out=[];Object.keys(state.qty).forEach(id=>{const o=OPTS[id];if(o&&state.qty[id]>0)out.push({o,qty:state.qty[id],note:state.notes[id]||""});});return out;}
 /* ── 예전 발주 불러와 수정 ───────────────────────────────────────
-   [발주 목록 관리 → 수정]을 누르면 그 발주의 품목을 카탈로그 수량칸으로
+   [발주 관리 → 수정]을 누르면 그 발주의 품목을 카탈로그 수량칸으로
    되돌려 놓고 '수정 모드'로 들어간다. 카탈로그에서 이름을 못 찾는 품목
    (품목명이 바뀌었거나 외부 엑셀에서 가져온 것)은 '기타 품목'으로
    발주 내역 아래에 그대로 남겨 수량만 고칠 수 있게 한다. */
@@ -614,7 +614,7 @@ function nowStamp(){const d=new Date();const p=n=>String(n).padStart(2,"0");retu
 function trashPush(entry){const t=loadTrash();entry.ts=nowStamp();entry.id="t"+Date.now()+Math.floor(Math.random()*1000);t.unshift(entry);saveTrash(t);}
 
 async function resetMonthBook(){const key=currentKey(),book=loadBook();const b=book[key];if(!b||!b.orders.length){toast("이번 달 저장된 발주가 없습니다");return;}
-  if(!confirm(`이번 달(${key.split("|")[1]}) 누적 발주 ${b.orders.length}건을 휴지통으로 비우고 새로 시작할까요?\n\n· 이미 다운로드한 엑셀 파일은 그대로 남습니다.\n· 실수로 눌러도 [발주 목록 관리 → 휴지통]에서 다시 복원할 수 있습니다.\n· 서버 장부에서도 비워져 다른 PC에도 반영됩니다.`))return;
+  if(!confirm(`이번 달(${key.split("|")[1]}) 누적 발주 ${b.orders.length}건을 휴지통으로 비우고 새로 시작할까요?\n\n· 이미 다운로드한 엑셀 파일은 그대로 남습니다.\n· 실수로 눌러도 [발주 관리 → 휴지통]에서 다시 복원할 수 있습니다.\n· 서버 장부에서도 비워져 다른 PC에도 반영됩니다.`))return;
   trashPush({kind:"bucket",key,supplier:b.supplier||b.project||supplierOf(),ym:b.ym||key.split("|")[1],orders:b.orders});
   const j=await callSync("clearMonth",{manager:$("#manager").value.trim()},key);
   if(!j){const bk=loadBook();delete bk[key];saveBook(bk);}
@@ -681,7 +681,7 @@ async function downloadExcel(){
   finally{dlBusy=false;renderPreview();}
 }
 
-/* ── 발주 목록 관리(삭제/재다운로드) ───────────────────────────── */
+/* ── 발주 관리(삭제/재다운로드) ───────────────────────────────── */
 function bucketLabel(key,b){const ym=key.split("|")[1]||b.ym;const sup=b.supplier||b.project||"";return`칸트_${sup}_${monthOf(ym)}월발주  (${ym} · ${b.orders.length}건)`;}
 let mgrView="orders";
 async function openManager(){mgrView="orders";$("#mgrTrash").textContent="휴지통";$("#mgr").classList.add("show");lockScroll();await pullBuckets();const book=loadBook();const keys=Object.keys(book).filter(k=>book[k]&&book[k].orders&&book[k].orders.length).sort().reverse();const sel=$("#mgrBucket");sel.innerHTML="";if(!keys.length){sel.innerHTML='<option value="">저장된 발주 없음</option>';}else{const cur=currentKey();const start=keys.indexOf(cur)>=0?cur:keys[0];keys.forEach(k=>{const o=document.createElement("option");o.value=k;o.textContent=bucketLabel(k,book[k]);if(k===start)o.selected=true;sel.appendChild(o);});}sel.onchange=async()=>{await pullBucket(sel.value);renderMgrList();};$("#mgrBucketWrap").style.display="";$("#mgrDownload").style.display="";renderMgrList();}
@@ -775,7 +775,7 @@ async function copyTable(){const sel=selected();if(!sel.length)return;const head
 function clearAll(){if(!hasItems())return;if(confirm("입력한 수량을 모두 지울까요?")){state.qty={};state.notes={};editExtras().forEach(x=>x.qty=0);render();toast("초기화했습니다");}}
 /* ── 월별 발주 내역 ─────────────────────────────────────────────
    서버 장부를 그대로 읽어 보여준다. 여기서는 고치지 않는다(읽기 전용).
-   고치는 건 [발주 목록]의 수정/삭제가 담당한다. */
+   고치는 건 [발주 관리]의 수정/삭제가 담당한다. */
 let HIST={buckets:[],sel:null,orders:[],view:"day",loading:false};
 async function openHistory(){$("#hist").classList.add("show");lockScroll();HIST.sel=null;await loadHistory();}
 function closeHistory(){$("#hist").classList.remove("show");lockScroll();}
