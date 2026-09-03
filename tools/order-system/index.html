@@ -644,12 +644,15 @@ async function buildSheet(wb,sheetName,ord){
 async function buildWorkbookBlob(orders){const wb=new ExcelJS.Workbook();for(const o of orders){await buildSheet(wb,o.sheet,o);}const buf=await wb.xlsx.writeBuffer();return new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});}
 function triggerDownload(blob,fname){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);}
 
+let dlBusy=false;
 async function downloadExcel(){
   if(state.edit){await saveEdit();return;}
+  if(dlBusy)return;                      // 연타 방지 — 같은 발주가 두 번 나가면 수량이 겹친다
   const sel=selected();if(!sel.length)return;
   if(typeof ExcelJS==="undefined"){toast("엑셀 모듈 로드 실패 — 인터넷 확인 후 재시도하거나 '표 복사' 이용");return;}
   const manager=$("#manager").value.trim();
   if(!manager){toast("담당자 이름을 입력해 주세요 — 누가 발주했는지 서버에 남습니다");$("#manager").focus();return;}
+  dlBusy=true;$("#btnExcel").disabled=true;
   try{
     const date=$("#orderDate").value||"";const supplier=($("#supplier").value||CAT[state.factory].label).trim();const memo=$("#memo").value||"";
     const ym=ymOf(date),key=bucketKey(supplier,ym);
@@ -668,11 +671,14 @@ async function downloadExcel(){
     const blob=await buildWorkbookBlob(bucket.orders);const fname=bookFilename(supplier,ym);
     triggerDownload(blob,fname);
     const logged=await saveOrder(sel,{date,supplier,manager,memo});
-    updateBookInfo();
+    // 보낸 발주는 담은 목록에서 비운다. 남겨두면 다음 다운로드 때 또 더해진다.
+    state.qty={};state.notes={};if(state.edit)state.edit.extras=[];
+    render();updateBookInfo();
     const q=items.reduce((a,i)=>a+(+i.qty||0),0);
     showDone(`<b>${escH(sheet)}</b> 발주서를 받았습니다 — ${items.length}종 ${q.toLocaleString()}개`+`<br>파일: ${escH(fname)} · 이 달 ${bucket.orders.length}일치가 한 파일에 들어 있습니다.`+(warn?`<br><span style="color:#c0392b">서버에 저장하지 못했습니다. 다른 PC에서는 안 보입니다.</span>`:""));
     toast(fname+" 받았습니다"+warn);
   }catch(e){console.error(e);toast("엑셀 생성 오류: "+(e.message||e));}
+  finally{dlBusy=false;renderPreview();}
 }
 
 /* ── 발주 목록 관리(삭제/재다운로드) ───────────────────────────── */
